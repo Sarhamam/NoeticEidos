@@ -1,0 +1,22 @@
+{
+  "name": "noetic-eidos",
+  "version": "0.1.0",
+  "description": "Geometric ML framework with dual transports, Mellin coupling, Fisher-Rao metrics, and quotient topology. Includes specialized agents for theoretical mathematics, applied implementation, and resonance ontology.",
+  "author": {
+    "name": "NoeticEidos Team"
+  },
+  "homepage": "https://github.com/Sarhamam/NoeticEidos",
+  "license": "MIT",
+  "keywords": [
+    "geometric-ml",
+    "mellin-transform",
+    "fisher-rao",
+    "quotient-topology",
+    "resonance-ontology",
+    "dual-transport",
+    "graph-laplacian",
+    "information-geometry"
+  ],
+  "agents": "../.claude/agents",
+  "commands": "../.claude/skills"
+}

@@ -1,0 +1,38 @@
+{
+  "name": "noetic-eidos-marketplace",
+  "owner": {
+    "name": "NoeticEidos Team",
+    "email": "contact@noeticeidos.com"
+  },
+  "metadata": {
+    "description": "Geometric ML framework with specialized AI agents for mathematical theory, implementation, and resonance ontology",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "noetic-eidos",
+      "source": "./",
+      "description": "Complete NoeticEidos plugin with agents for theoretical mathematics, applied implementation, resonance ontology, and geometric ML skills",
+      "version": "0.1.0",
+      "author": {
+        "name": "NoeticEidos Team"
+      },
+      "license": "MIT",
+      "keywords": [
+        "geometric-ml",
+        "mellin-transform",
+        "fisher-rao",
+        "quotient-topology",
+        "resonance-ontology",
+        "mathematics"
+      ],
+      "category": "mathematics",
+      "tags": [
+        "ml",
+        "geometry",
+        "topology",
+        "research"
+      ]
+    }
+  ]
+}
