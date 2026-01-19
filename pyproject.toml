@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "noeticeidos"
 description = "Geometric ML Framework - Unifying dual transports and topological analysis"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [
     {name = "Sar Hamam"},
@@ -145,7 +145,7 @@ ignore = [
 
 # MyPy configuration
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.9"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false  # Allow for research code flexibility
