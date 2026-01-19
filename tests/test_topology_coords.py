@@ -1,14 +1,21 @@
 """Tests for topology coordinate handling."""
 
+import sys
+
 import numpy as np
 import pytest
-import sys
-sys.path.insert(0, 'src')
+
+sys.path.insert(0, "src")
 
 from topology.coords import (
-    Strip, wrap_u, deck_map, pushforward_velocity,
-    apply_seam_if_needed, is_on_seam, seam_equivalent_points,
-    distance_on_quotient
+    Strip,
+    apply_seam_if_needed,
+    deck_map,
+    distance_on_quotient,
+    is_on_seam,
+    pushforward_velocity,
+    seam_equivalent_points,
+    wrap_u,
 )
 
 
@@ -17,15 +24,15 @@ class TestStrip:
 
     def test_strip_creation(self):
         """Test Strip dataclass creation."""
-        strip = Strip(w=1.5, period=4*np.pi)
+        strip = Strip(w=1.5, period=4 * np.pi)
         assert strip.w == 1.5
-        assert strip.period == 4*np.pi
+        assert strip.period == 4 * np.pi
 
     def test_strip_defaults(self):
         """Test Strip default values."""
         strip = Strip(w=1.0)
         assert strip.w == 1.0
-        assert strip.period == 2*np.pi
+        assert strip.period == 2 * np.pi
 
 
 class TestWrapU:
@@ -34,13 +41,13 @@ class TestWrapU:
     def test_wrap_single_value(self):
         """Test wrapping single u value."""
         assert np.isclose(wrap_u(0.0), 0.0)
-        assert np.isclose(wrap_u(2*np.pi), 0.0)
-        assert np.isclose(wrap_u(3*np.pi), np.pi)
+        assert np.isclose(wrap_u(2 * np.pi), 0.0)
+        assert np.isclose(wrap_u(3 * np.pi), np.pi)
         assert np.isclose(wrap_u(-np.pi), np.pi)
 
     def test_wrap_array(self):
         """Test wrapping array of u values."""
-        u = np.array([0.0, np.pi, 2*np.pi, 3*np.pi, -np.pi])
+        u = np.array([0.0, np.pi, 2 * np.pi, 3 * np.pi, -np.pi])
         u_wrapped = wrap_u(u)
         expected = np.array([0.0, np.pi, 0.0, np.pi, np.pi])
         assert np.allclose(u_wrapped, expected)
@@ -68,12 +75,12 @@ class TestDeckMap:
     def test_deck_map_array(self):
         """Test deck map on arrays."""
         strip = Strip(w=1.0)
-        u = np.array([0.0, np.pi/2, np.pi])
+        u = np.array([0.0, np.pi / 2, np.pi])
         v = np.array([0.5, -0.3, 0.8])
 
         u_mapped, v_mapped = deck_map(u, v, strip)
 
-        expected_u = np.array([np.pi, 3*np.pi/2, 0.0])  # Wrapped
+        expected_u = np.array([np.pi, 3 * np.pi / 2, 0.0])  # Wrapped
         expected_v = np.array([-0.5, 0.3, -0.8])
 
         assert np.allclose(u_mapped, expected_u)
@@ -94,13 +101,13 @@ class TestDeckMap:
 
     def test_deck_map_custom_strip(self):
         """Test deck map with custom strip configuration."""
-        strip = Strip(w=2.0, period=4*np.pi)
+        strip = Strip(w=2.0, period=4 * np.pi)
         u, v = np.pi, 1.5
 
         u_mapped, v_mapped = deck_map(u, v, strip)
 
-        assert np.isclose(u_mapped, 2*np.pi)  # u + π
-        assert np.isclose(v_mapped, -1.5)     # -v
+        assert np.isclose(u_mapped, 2 * np.pi)  # u + π
+        assert np.isclose(v_mapped, -1.5)  # -v
 
 
 class TestPushforwardVelocity:
@@ -111,8 +118,8 @@ class TestPushforwardVelocity:
         du, dv = 0.5, -0.3
         du_pushed, dv_pushed = pushforward_velocity(du, dv)
 
-        assert np.isclose(du_pushed, 0.5)   # Unchanged
-        assert np.isclose(dv_pushed, 0.3)   # Sign flipped
+        assert np.isclose(du_pushed, 0.5)  # Unchanged
+        assert np.isclose(dv_pushed, 0.3)  # Sign flipped
 
     def test_pushforward_array(self):
         """Test pushforward of velocity arrays."""
@@ -121,8 +128,8 @@ class TestPushforwardVelocity:
 
         du_pushed, dv_pushed = pushforward_velocity(du, dv)
 
-        assert np.allclose(du_pushed, du)      # u-component unchanged
-        assert np.allclose(dv_pushed, -dv)     # v-component flipped
+        assert np.allclose(du_pushed, du)  # u-component unchanged
+        assert np.allclose(dv_pushed, -dv)  # v-component flipped
 
     def test_pushforward_differential_properties(self):
         """Test that pushforward represents dT = diag(1, -1)."""
@@ -170,7 +177,7 @@ class TestApplySeamIfNeeded:
         assert np.isclose(u_new, expected_u)
         assert np.isclose(v_new, -1.0)  # Clamped to -w
         assert np.isclose(du_new, 0.1)  # u-velocity unchanged
-        assert np.isclose(dv_new, -0.2) # v-velocity flipped
+        assert np.isclose(dv_new, -0.2)  # v-velocity flipped
 
     def test_bottom_seam_crossing(self):
         """Test crossing at bottom seam (v = -w)."""
@@ -183,8 +190,8 @@ class TestApplySeamIfNeeded:
         # Should apply deck map and clamp to top
         expected_u = wrap_u(1.2 + np.pi, strip.period)
         assert np.isclose(u_new, expected_u)
-        assert np.isclose(v_new, 1.0)   # Clamped to +w
-        assert np.isclose(du_new, -0.3) # u-velocity unchanged
+        assert np.isclose(v_new, 1.0)  # Clamped to +w
+        assert np.isclose(du_new, -0.3)  # u-velocity unchanged
         assert np.isclose(dv_new, 0.1)  # v-velocity flipped
 
     def test_array_seam_handling(self):
@@ -304,7 +311,7 @@ class TestDistanceOnQuotient:
         u2, v2 = 1.0, 0.7
 
         dist = distance_on_quotient(u1, v1, u2, v2, strip)
-        expected = np.sqrt((1.0 - 0.5)**2 + (0.7 - 0.3)**2)
+        expected = np.sqrt((1.0 - 0.5) ** 2 + (0.7 - 0.3) ** 2)
         assert np.isclose(dist, expected)
 
     def test_seam_equivalent_distance(self):
@@ -318,14 +325,14 @@ class TestDistanceOnQuotient:
 
     def test_shorter_path_via_deck_map(self):
         """Test that shorter path via deck map is chosen."""
-        strip = Strip(w=1.0, period=2*np.pi)
+        strip = Strip(w=1.0, period=2 * np.pi)
         u1, v1 = 0.1, 0.5
-        u2, v2 = 2*np.pi - 0.1, -0.5  # Close via deck map
+        u2, v2 = 2 * np.pi - 0.1, -0.5  # Close via deck map
 
         dist = distance_on_quotient(u1, v1, u2, v2, strip)
 
         # Direct distance would be large, deck map distance should be small
-        direct_dist = np.sqrt((u2 - u1)**2 + (v2 - v1)**2)
+        direct_dist = np.sqrt((u2 - u1) ** 2 + (v2 - v1) ** 2)
         assert dist < direct_dist
 
     def test_array_distances(self):

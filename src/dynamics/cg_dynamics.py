@@ -1,13 +1,14 @@
 """Conjugate Gradient dynamics constrained to manifolds."""
 
-import numpy as np
-from scipy.sparse import csr_matrix, issparse
-from typing import Tuple, List, Callable, Optional, Dict, Any
 import time
+from typing import Any, Callable, Dict, List, Tuple
 
-from dynamics.projected import projected_velocity, constraint_force
-from solvers.cg import cg_solve, CGInfo
+import numpy as np
+from scipy.sparse import csr_matrix
+
+from dynamics.projected import constraint_force, projected_velocity
 from geometry.projection import project_to_manifold
+from solvers.cg import cg_solve
 
 
 class ConstrainedCGInfo:
@@ -33,7 +34,7 @@ def inner_cg_dynamics(
     rtol: float = 1e-6,
     constraint_tol: float = 1e-6,
     projection_method: str = "tangent",
-    verbose: bool = False
+    verbose: bool = False,
 ) -> Tuple[List[np.ndarray], ConstrainedCGInfo]:
     """Run CG iterations constrained to manifold Z = {x : f(x) = 0}.
 
@@ -95,7 +96,8 @@ def inner_cg_dynamics(
 
     # System matrix
     from scipy.sparse import eye
-    A = L + alpha * eye(n, format='csr')
+
+    A = L + alpha * eye(n, format="csr")
 
     # Initialize CG state
     x = x0.copy()
@@ -154,8 +156,9 @@ def inner_cg_dynamics(
         elif projection_method == "manifold":
             # Project back to manifold
             try:
-                x_new = project_to_manifold(x_new.reshape(1, -1), f, jacobian,
-                                          max_iter=5, tol=constraint_tol)[0]
+                x_new = project_to_manifold(
+                    x_new.reshape(1, -1), f, jacobian, max_iter=5, tol=constraint_tol
+                )[0]
             except:
                 if verbose:
                     print(f"Manifold projection failed at iteration {iteration}")
@@ -180,8 +183,10 @@ def inner_cg_dynamics(
         constraint_violation = np.linalg.norm(f_val)
 
         if verbose and iteration % 10 == 0:
-            print(f"Iter {iteration:3d}: res={residual_norm:.2e}, "
-                  f"constraint={constraint_violation:.2e}")
+            print(
+                f"Iter {iteration:3d}: res={residual_norm:.2e}, "
+                f"constraint={constraint_violation:.2e}"
+            )
 
         # Store trajectory point
         x = x_new.copy()
@@ -224,7 +229,7 @@ def constrained_gradient_descent(
     steps: int = 100,
     step_size: float = 0.01,
     constraint_tol: float = 1e-6,
-    verbose: bool = False
+    verbose: bool = False,
 ) -> Tuple[List[np.ndarray], Dict[str, Any]]:
     """Projected gradient descent on constraint manifold.
 
@@ -255,7 +260,6 @@ def constrained_gradient_descent(
         Optimization information
     """
     trajectory = [x0.copy()]
-    objective_values = []
     constraint_violations = []
 
     x = x0.copy()
@@ -265,7 +269,7 @@ def constrained_gradient_descent(
         grad = objective_grad(x)
 
         # Evaluate constraints and Jacobian
-        f_val = f(x.reshape(1, -1)).flatten()
+        f(x.reshape(1, -1)).flatten()
         J_f = jacobian(x.reshape(1, -1))
         # Handle different jacobian formats
         if len(J_f.shape) == 3:
@@ -279,8 +283,9 @@ def constrained_gradient_descent(
 
         # Optional: project back to manifold
         try:
-            x_new = project_to_manifold(x_new.reshape(1, -1), f, jacobian,
-                                      max_iter=3, tol=constraint_tol)[0]
+            x_new = project_to_manifold(
+                x_new.reshape(1, -1), f, jacobian, max_iter=3, tol=constraint_tol
+            )[0]
         except:
             pass
 
@@ -297,8 +302,8 @@ def constrained_gradient_descent(
             print(f"Iter {iteration:3d}: constraint_viol={constraint_violation:.2e}")
 
     info = {
-        'constraint_violations': constraint_violations,
-        'converged': constraint_violations[-1] < constraint_tol
+        "constraint_violations": constraint_violations,
+        "converged": constraint_violations[-1] < constraint_tol,
     }
 
     return trajectory, info
@@ -311,7 +316,7 @@ def lagrange_multiplier_cg(
     b_constraint: np.ndarray,
     alpha: float = 1e-3,
     rtol: float = 1e-6,
-    maxiter: int = 1000
+    maxiter: int = 1000,
 ) -> Tuple[np.ndarray, np.ndarray, Dict[str, Any]]:
     """Solve constrained linear system using Lagrange multipliers.
 
@@ -347,7 +352,8 @@ def lagrange_multiplier_cg(
     [L + αI    A^T] [x]   [b]
     [A         0  ] [λ] = [b_c]
     """
-    from scipy.sparse import bmat, csr_matrix as csr
+    from scipy.sparse import bmat
+    from scipy.sparse import csr_matrix as csr
     from scipy.sparse import linalg as spla
 
     n = L.shape[0]
@@ -358,12 +364,10 @@ def lagrange_multiplier_cg(
     zero_block = csr((m, m))
 
     from scipy.sparse import eye
-    L_reg = L + alpha * eye(n, format='csr')
 
-    KKT = bmat([
-        [L_reg, A_sparse.T],
-        [A_sparse, zero_block]
-    ], format='csr')
+    L_reg = L + alpha * eye(n, format="csr")
+
+    KKT = bmat([[L_reg, A_sparse.T], [A_sparse, zero_block]], format="csr")
 
     # Build RHS
     rhs = np.concatenate([b, b_constraint])
@@ -383,9 +387,9 @@ def lagrange_multiplier_cg(
     lambda_ = sol[n:]
 
     info = {
-        'converged': converged,
-        'wall_time': time.time() - start_time,
-        'constraint_residual': np.linalg.norm(A_constraint @ x - b_constraint)
+        "converged": converged,
+        "wall_time": time.time() - start_time,
+        "constraint_residual": np.linalg.norm(A_constraint @ x - b_constraint),
     }
 
     return x, lambda_, info

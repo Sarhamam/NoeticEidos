@@ -1,12 +1,13 @@
 """Conjugate Gradient solver for shifted Laplacian systems."""
 
-import numpy as np
-from scipy.sparse import csr_matrix, eye, issparse
-from typing import Union, Optional, Callable, Tuple
 import time
+from typing import Callable, Optional, Tuple, Union
 
-from .utils import CGInfo, check_convergence, log_iteration
+import numpy as np
+from scipy.sparse import csr_matrix, eye
+
 from .preconditioners import build_preconditioner
+from .utils import CGInfo, check_convergence, log_iteration
 
 
 def cg_solve(
@@ -18,7 +19,7 @@ def cg_solve(
     maxiter: int = 2000,
     M: Optional[Union[Callable, str]] = None,
     seed: Optional[int] = 0,
-    verbose: bool = False
+    verbose: bool = False,
 ) -> Tuple[np.ndarray, CGInfo]:
     """Solve (L + αI)u = b using Conjugate Gradient.
 
@@ -74,7 +75,7 @@ def cg_solve(
     n_rhs = b.shape[1]
 
     # Build shifted system A = L + αI
-    A = L + alpha * eye(n, format='csr')
+    A = L + alpha * eye(n, format="csr")
 
     # Setup preconditioner
     if M is None:
@@ -100,8 +101,8 @@ def cg_solve(
 
         # Initialize CG
         r = b_j - A @ u_j  # Initial residual
-        z = M_apply(r)     # Preconditioned residual
-        p = z.copy()       # Initial search direction
+        z = M_apply(r)  # Preconditioned residual
+        p = z.copy()  # Initial search direction
 
         b_norm = np.linalg.norm(b_j)
         r_norm = np.linalg.norm(r)
@@ -176,17 +177,14 @@ def cg_solve(
         atol=atol,
         maxiter=maxiter,
         wall_time=time.time() - start_time,
-        initial_residual=initial_residual
+        initial_residual=initial_residual,
     )
 
     return u, info
 
 
 def effective_resistance(
-    L: csr_matrix,
-    pairs: np.ndarray,
-    alpha: float = 1e-6,
-    **cg_kwargs
+    L: csr_matrix, pairs: np.ndarray, alpha: float = 1e-6, **cg_kwargs
 ) -> Tuple[np.ndarray, CGInfo]:
     """Compute effective resistance between node pairs.
 
@@ -245,7 +243,7 @@ def effective_resistance(
         iterations=total_iters,
         matvecs=total_matvecs,
         alpha=alpha,
-        wall_time=wall_time
+        wall_time=wall_time,
     )
 
     return resistances, agg_info

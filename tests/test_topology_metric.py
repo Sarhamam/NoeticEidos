@@ -1,22 +1,24 @@
 """Tests for topology metric seam-compatibility."""
 
+import sys
+
 import numpy as np
 import pytest
-import sys
-sys.path.insert(0, 'src')
 
-from topology.coords import Strip, deck_map
+sys.path.insert(0, "src")
+
+from topology.coords import Strip
 from topology.metric import (
     SeamCompatibilityError,
-    seam_compatible_metric,
+    check_metric_positive_definite,
     enforce_seam_compatibility,
-    validate_metric_grid,
+    make_seam_compatible_metric,
+    regularize_metric,
+    seam_compatible_metric,
     seam_compatible_operator,
     symmetrize_metric,
-    check_metric_positive_definite,
-    regularize_metric,
-    make_seam_compatible_metric,
-    validate_component_symmetries
+    validate_component_symmetries,
+    validate_metric_grid,
 )
 
 
@@ -25,6 +27,7 @@ class TestSeamCompatibleMetric:
 
     def test_identity_metric_compatible(self):
         """Test that identity metric is seam-compatible."""
+
         def identity_metric(q):
             return np.eye(2)
 
@@ -35,9 +38,10 @@ class TestSeamCompatibleMetric:
 
     def test_diagonal_metric_compatible(self):
         """Test diagonal metric with even diagonal elements."""
+
         def diagonal_metric(q):
             u, v = q[0], q[1]
-            return np.diag([2.0 + np.cos(2*u), 1.5 + np.cos(2*v)])  # Even functions
+            return np.diag([2.0 + np.cos(2 * u), 1.5 + np.cos(2 * v)])  # Even functions
 
         strip = Strip(w=1.0)
         q = np.array([0.5, 0.3])
@@ -46,11 +50,11 @@ class TestSeamCompatibleMetric:
 
     def test_incompatible_metric(self):
         """Test metric that violates seam-compatibility."""
+
         def bad_metric(q):
             u, v = q[0], q[1]
             # g12 component depends on u + v (not properly transformed)
-            return np.array([[1.0, np.sin(u + v)],
-                           [np.sin(u + v), 1.0]])
+            return np.array([[1.0, np.sin(u + v)], [np.sin(u + v), 1.0]])
 
         strip = Strip(w=1.0)
         q = np.array([0.5, 0.3])
@@ -59,12 +63,13 @@ class TestSeamCompatibleMetric:
 
     def test_seam_compatible_metric_formula(self):
         """Test metric satisfying seam-compatibility formula explicitly."""
+
         def metric_fn(q):
             u, v = q[0], q[1]
             # Design to satisfy g(u+π, -v) = dT^T g(u,v) dT
-            g11 = 2.0 + np.cos(2*u) + np.cos(2*v)  # Even in v
-            g22 = 1.5 + np.sin(2*u) + np.cos(4*v)  # Even in v
-            g12 = 0.1 * np.sin(2*u) * np.sin(2*v)  # Odd in v
+            g11 = 2.0 + np.cos(2 * u) + np.cos(2 * v)  # Even in v
+            g22 = 1.5 + np.sin(2 * u) + np.cos(4 * v)  # Even in v
+            g12 = 0.1 * np.sin(2 * u) * np.sin(2 * v)  # Odd in v
             return np.array([[g11, g12], [g12, g22]])
 
         strip = Strip(w=1.0)
@@ -73,8 +78,8 @@ class TestSeamCompatibleMetric:
         test_points = [
             np.array([0.0, 0.0]),
             np.array([0.5, 0.3]),
-            np.array([np.pi/2, 0.8]),
-            np.array([np.pi, -0.5])
+            np.array([np.pi / 2, 0.8]),
+            np.array([np.pi, -0.5]),
         ]
 
         for q in test_points:
@@ -82,8 +87,9 @@ class TestSeamCompatibleMetric:
 
     def test_tolerance_sensitivity(self):
         """Test sensitivity to tolerance parameter."""
+
         def almost_compatible_metric(q):
-            u, v = q[0], q[1]
+            _u, v = q[0], q[1]
             # Add small violation
             epsilon = 1e-7
             g11 = 1.0 + epsilon * v  # Slight v-dependence
@@ -93,13 +99,18 @@ class TestSeamCompatibleMetric:
         q = np.array([0.5, 0.8])
 
         # Should fail with tight tolerance
-        assert not seam_compatible_metric(almost_compatible_metric, q, strip, tolerance=1e-8)
+        assert not seam_compatible_metric(
+            almost_compatible_metric, q, strip, tolerance=1e-8
+        )
 
         # Should pass with loose tolerance
-        assert seam_compatible_metric(almost_compatible_metric, q, strip, tolerance=1e-6)
+        assert seam_compatible_metric(
+            almost_compatible_metric, q, strip, tolerance=1e-6
+        )
 
     def test_invalid_input_shapes(self):
         """Test error handling for invalid inputs."""
+
         def metric_fn(q):
             return np.eye(2)
 
@@ -122,6 +133,7 @@ class TestEnforceSeamCompatibility:
 
     def test_enforce_compatible_metric(self):
         """Test enforcement passes for compatible metric."""
+
         def compatible_metric(q):
             return np.eye(2)
 
@@ -133,18 +145,22 @@ class TestEnforceSeamCompatibility:
 
     def test_enforce_incompatible_metric(self):
         """Test enforcement raises error for incompatible metric."""
+
         def incompatible_metric(q):
             u, v = q[0], q[1]
-            return np.array([[1.0, u*v], [u*v, 1.0]])  # Violates compatibility
+            return np.array([[1.0, u * v], [u * v, 1.0]])  # Violates compatibility
 
         strip = Strip(w=1.0)
         q = np.array([0.5, 0.3])
 
-        with pytest.raises(SeamCompatibilityError, match="Metric violates seam-compatibility"):
+        with pytest.raises(
+            SeamCompatibilityError, match="Metric violates seam-compatibility"
+        ):
             enforce_seam_compatibility(incompatible_metric, q, strip)
 
     def test_error_message_details(self):
         """Test that error message contains useful details."""
+
         def bad_metric(q):
             return np.array([[1.0, 1.0], [1.0, 1.0]])  # Constant off-diagonal
 
@@ -165,10 +181,10 @@ class TestValidateMetricGrid:
 
     def test_compatible_metric_grid(self):
         """Test grid validation for compatible metric."""
+
         def compatible_metric(q):
             u, v = q[0], q[1]
-            return np.array([[2.0 + np.cos(2*u), 0.0],
-                           [0.0, 1.5 + np.cos(2*v)]])
+            return np.array([[2.0 + np.cos(2 * u), 0.0], [0.0, 1.5 + np.cos(2 * v)]])
 
         strip = Strip(w=1.0)
         report = validate_metric_grid(compatible_metric, strip, n_u=5, n_v=5)
@@ -180,10 +196,12 @@ class TestValidateMetricGrid:
 
     def test_incompatible_metric_grid(self):
         """Test grid validation for incompatible metric."""
+
         def incompatible_metric(q):
             u, v = q[0], q[1]
-            return np.array([[1.0, np.sin(u + v)],  # Violates compatibility
-                           [np.sin(u + v), 1.0]])
+            return np.array(
+                [[1.0, np.sin(u + v)], [np.sin(u + v), 1.0]]  # Violates compatibility
+            )
 
         strip = Strip(w=1.0)
         report = validate_metric_grid(incompatible_metric, strip, n_u=5, n_v=5)
@@ -195,6 +213,7 @@ class TestValidateMetricGrid:
 
     def test_grid_report_structure(self):
         """Test structure of grid validation report."""
+
         def metric_fn(q):
             return np.eye(2)
 
@@ -202,8 +221,15 @@ class TestValidateMetricGrid:
         report = validate_metric_grid(metric_fn, strip, n_u=3, n_v=4)
 
         required_keys = [
-            "grid_size", "total_points", "violations", "violation_rate",
-            "max_error", "mean_error", "tolerance", "compatible", "violation_details"
+            "grid_size",
+            "total_points",
+            "violations",
+            "violation_rate",
+            "max_error",
+            "mean_error",
+            "tolerance",
+            "compatible",
+            "violation_details",
         ]
         for key in required_keys:
             assert key in report
@@ -217,6 +243,7 @@ class TestSeamCompatibleOperator:
 
     def test_identity_operator_compatible(self):
         """Test that identity operator is seam-compatible."""
+
         def identity_op(q):
             return np.eye(2)
 
@@ -228,10 +255,11 @@ class TestSeamCompatibleOperator:
 
     def test_diagonal_operator_compatible(self):
         """Test compatible diagonal operator."""
+
         def diag_op(q):
             u, v = q[0], q[1]
             # Diagonal elements even in v for compatibility
-            return np.diag([2.0 + np.cos(2*v), 1.0 + np.sin(2*u)])
+            return np.diag([2.0 + np.cos(2 * v), 1.0 + np.sin(2 * u)])
 
         strip = Strip(w=1.0)
         q = np.array([0.5, 0.3])
@@ -240,11 +268,11 @@ class TestSeamCompatibleOperator:
 
     def test_incompatible_operator(self):
         """Test operator that violates seam-compatibility."""
+
         def bad_op(q):
             u, v = q[0], q[1]
             # Off-diagonal elements that don't transform correctly
-            return np.array([[1.0, np.sin(u)],
-                           [np.cos(v), 1.0]])
+            return np.array([[1.0, np.sin(u)], [np.cos(v), 1.0]])
 
         strip = Strip(w=1.0)
         q = np.array([0.5, 0.3])
@@ -298,17 +326,18 @@ class TestMakeSeamCompatibleMetric:
 
     def test_construct_compatible_metric(self):
         """Test construction from component functions."""
+
         def g11_fn(q):
             u, v = q[0], q[1]
-            return 2.0 + np.cos(2*u) + np.cos(2*v)  # Even in v
+            return 2.0 + np.cos(2 * u) + np.cos(2 * v)  # Even in v
 
         def g22_fn(q):
             u, v = q[0], q[1]
-            return 1.5 + np.sin(2*u) + np.cos(4*v)  # Even in v
+            return 1.5 + np.sin(2 * u) + np.cos(4 * v)  # Even in v
 
         def g12_fn(q):
             u, v = q[0], q[1]
-            return 0.1 * np.sin(2*u) * np.sin(2*v)  # Odd in v
+            return 0.1 * np.sin(2 * u) * np.sin(2 * v)  # Odd in v
 
         metric_fn = make_seam_compatible_metric(g11_fn, g22_fn, g12_fn)
 
@@ -328,6 +357,7 @@ class TestMakeSeamCompatibleMetric:
 
     def test_construct_diagonal_metric(self):
         """Test construction with only diagonal components."""
+
         def g11_fn(q):
             return 2.0
 
@@ -348,17 +378,18 @@ class TestValidateComponentSymmetries:
 
     def test_correct_symmetries(self):
         """Test components with correct symmetries."""
+
         def g11_fn(q):
-            u, v = q[0], q[1]
-            return 2.0 + np.cos(2*v)  # Even in v
+            _u, v = q[0], q[1]
+            return 2.0 + np.cos(2 * v)  # Even in v
 
         def g22_fn(q):
-            u, v = q[0], q[1]
-            return 1.5 + np.cos(2*u)  # Periodic in u
+            u, _v = q[0], q[1]
+            return 1.5 + np.cos(2 * u)  # Periodic in u
 
         def g12_fn(q):
-            u, v = q[0], q[1]
-            return 0.1 * np.sin(2*v)  # Odd in v
+            _u, v = q[0], q[1]
+            return 0.1 * np.sin(2 * v)  # Odd in v
 
         strip = Strip(w=1.0)
         results = validate_component_symmetries(g11_fn, g22_fn, g12_fn, strip)
@@ -369,16 +400,17 @@ class TestValidateComponentSymmetries:
 
     def test_incorrect_symmetries(self):
         """Test components with incorrect symmetries."""
+
         def g11_fn(q):
-            u, v = q[0], q[1]
+            _u, v = q[0], q[1]
             return 2.0 + v  # Linear in v (not even)
 
         def g22_fn(q):
-            u, v = q[0], q[1]
+            _u, _v = q[0], q[1]
             return 1.5
 
         def g12_fn(q):
-            u, v = q[0], q[1]
+            _u, v = q[0], q[1]
             return 0.1 * np.cos(v)  # Even in v (should be odd)
 
         strip = Strip(w=1.0)
@@ -389,8 +421,9 @@ class TestValidateComponentSymmetries:
 
     def test_periodicity_validation(self):
         """Test periodicity requirements."""
+
         def g11_fn(q):
-            u, v = q[0], q[1]
+            u, _v = q[0], q[1]
             return 2.0 + np.sin(u)  # Not π-periodic
 
         def g22_fn(q):

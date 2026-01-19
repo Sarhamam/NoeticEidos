@@ -1,21 +1,23 @@
 """Tests for topology geodesic integration."""
 
+import sys
+import warnings
+
 import numpy as np
 import pytest
-import warnings
-import sys
-sys.path.insert(0, 'src')
+
+sys.path.insert(0, "src")
 
 from topology.coords import Strip
 from topology.geodesic import (
     GeodesicIntegrationError,
+    adaptive_geodesic_step,
     christoffel,
     geodesic_acceleration,
-    geodesic_leapfrog_step,
+    geodesic_distance,
     geodesic_energy,
+    geodesic_leapfrog_step,
     integrate_geodesic,
-    adaptive_geodesic_step,
-    geodesic_distance
 )
 
 
@@ -40,16 +42,16 @@ class TestChristoffel:
         g = np.diag([u**2, v**2])
 
         # Derivatives: ∂g/∂u and ∂g/∂v
-        du_g = np.diag([2*u, 0])
-        dv_g = np.diag([0, 2*v])
+        du_g = np.diag([2 * u, 0])
+        dv_g = np.diag([0, 2 * v])
 
         Gamma = christoffel(g, du_g, dv_g)
 
         # For diagonal metric g = diag(g11, g22):
         # Γ¹₁₁ = (1/2g11) ∂g11/∂u = (1/2u²)(2u) = 1/u
         # Γ²₂₂ = (1/2g22) ∂g22/∂v = (1/2v²)(2v) = 1/v
-        assert np.isclose(Gamma[0, 0, 0], 1.0/u)  # Γ¹₁₁
-        assert np.isclose(Gamma[1, 1, 1], 1.0/v)  # Γ²₂₂
+        assert np.isclose(Gamma[0, 0, 0], 1.0 / u)  # Γ¹₁₁
+        assert np.isclose(Gamma[1, 1, 1], 1.0 / v)  # Γ²₂₂
 
         # Off-diagonal should be zero for diagonal metric
         assert np.isclose(Gamma[0, 0, 1], 0.0)
@@ -87,6 +89,7 @@ class TestGeodesicAcceleration:
 
     def test_flat_metric_acceleration(self):
         """Test acceleration is zero for flat metric with constant velocity."""
+
         def flat_metric(q):
             return np.eye(2)
 
@@ -101,6 +104,7 @@ class TestGeodesicAcceleration:
 
     def test_acceleration_input_validation(self):
         """Test input validation for acceleration computation."""
+
         def metric_fn(q):
             return np.eye(2)
 
@@ -108,27 +112,36 @@ class TestGeodesicAcceleration:
             return np.zeros((2, 2)), np.zeros((2, 2))
 
         # Wrong shapes
-        with pytest.raises(ValueError, match="Position and velocity must be 2D vectors"):
-            geodesic_acceleration(np.array([1.0]), np.array([0.5, 0.3]), metric_fn, grad_fn)
+        with pytest.raises(
+            ValueError, match="Position and velocity must be 2D vectors"
+        ):
+            geodesic_acceleration(
+                np.array([1.0]), np.array([0.5, 0.3]), metric_fn, grad_fn
+            )
 
-        with pytest.raises(ValueError, match="Position and velocity must be 2D vectors"):
-            geodesic_acceleration(np.array([1.0, 2.0]), np.array([0.5]), metric_fn, grad_fn)
+        with pytest.raises(
+            ValueError, match="Position and velocity must be 2D vectors"
+        ):
+            geodesic_acceleration(
+                np.array([1.0, 2.0]), np.array([0.5]), metric_fn, grad_fn
+            )
 
     def test_spherical_metric_acceleration(self):
         """Test acceleration for spherical metric (non-trivial example)."""
+
         def spherical_metric(q):
             # Metric in spherical coordinates (θ, φ)
             theta = q[1]
-            return np.diag([1.0, np.sin(theta)**2])
+            return np.diag([1.0, np.sin(theta) ** 2])
 
         def spherical_grad(q):
             theta = q[1]
             du_g = np.zeros((2, 2))
-            dv_g = np.array([[0.0, 0.0], [0.0, 2*np.sin(theta)*np.cos(theta)]])
+            dv_g = np.array([[0.0, 0.0], [0.0, 2 * np.sin(theta) * np.cos(theta)]])
             return du_g, dv_g
 
-        q = np.array([0.0, np.pi/4])  # 45 degrees
-        v = np.array([0.0, 1.0])      # Moving in θ direction (to get curvature effect)
+        q = np.array([0.0, np.pi / 4])  # 45 degrees
+        v = np.array([0.0, 1.0])  # Moving in θ direction (to get curvature effect)
 
         accel = geodesic_acceleration(q, v, spherical_metric, spherical_grad)
 
@@ -143,6 +156,7 @@ class TestGeodesicLeapfrogStep:
 
     def test_flat_metric_straight_line(self):
         """Test that geodesics in flat metric are straight lines."""
+
         def flat_metric(q):
             return np.eye(2)
 
@@ -163,6 +177,7 @@ class TestGeodesicLeapfrogStep:
 
     def test_seam_crossing_handling(self):
         """Test seam crossing during integration step."""
+
         def flat_metric(q):
             return np.eye(2)
 
@@ -170,8 +185,8 @@ class TestGeodesicLeapfrogStep:
             return np.zeros((2, 2)), np.zeros((2, 2))
 
         strip = Strip(w=1.0)
-        q = np.array([0.5, 0.9])   # Near top boundary
-        v = np.array([0.0, 0.5])   # Moving toward boundary
+        q = np.array([0.5, 0.9])  # Near top boundary
+        v = np.array([0.0, 0.5])  # Moving toward boundary
         dt = 0.5  # Large step to ensure crossing
 
         q_new, v_new = geodesic_leapfrog_step(q, v, dt, flat_metric, flat_grad, strip)
@@ -188,6 +203,7 @@ class TestGeodesicEnergy:
 
     def test_energy_flat_metric(self):
         """Test energy computation for flat metric."""
+
         def flat_metric(q):
             return np.eye(2)
 
@@ -195,11 +211,12 @@ class TestGeodesicEnergy:
         v = np.array([0.5, -0.3])
 
         energy = geodesic_energy(q, v, flat_metric)
-        expected = 0.5 * (0.5**2 + (-0.3)**2)
+        expected = 0.5 * (0.5**2 + (-0.3) ** 2)
         assert np.isclose(energy, expected)
 
     def test_energy_scaled_metric(self):
         """Test energy with scaled metric."""
+
         def scaled_metric(q):
             return 2.0 * np.eye(2)
 
@@ -212,6 +229,7 @@ class TestGeodesicEnergy:
 
     def test_energy_positive(self):
         """Test that energy is always non-negative."""
+
         def positive_metric(q):
             return np.array([[2.0, 0.5], [0.5, 1.0]])  # Positive definite
 
@@ -227,6 +245,7 @@ class TestIntegrateGeodesic:
 
     def test_straight_line_integration(self):
         """Test integration of straight line in flat metric."""
+
         def flat_metric(q):
             return np.eye(2)
 
@@ -255,6 +274,7 @@ class TestIntegrateGeodesic:
 
     def test_energy_conservation(self):
         """Test energy conservation during integration."""
+
         def constant_metric(q):
             return np.array([[2.0, 0.5], [0.5, 1.5]])
 
@@ -268,8 +288,14 @@ class TestIntegrateGeodesic:
         dt = 0.001  # Small time step for accuracy
 
         traj_q, traj_v, info = integrate_geodesic(
-            q0, v0, t_final, dt, constant_metric, constant_grad, strip,
-            energy_tolerance=1e-6
+            q0,
+            v0,
+            t_final,
+            dt,
+            constant_metric,
+            constant_grad,
+            strip,
+            energy_tolerance=1e-6,
         )
 
         assert info["success"]
@@ -282,6 +308,7 @@ class TestIntegrateGeodesic:
 
     def test_integration_error_handling(self):
         """Test error handling during integration."""
+
         def bad_metric(q):
             # Metric becomes singular at origin
             u, v = q[0], q[1]
@@ -303,15 +330,16 @@ class TestIntegrateGeodesic:
 
     def test_excessive_energy_drift_warning(self):
         """Test warning for excessive energy drift."""
+
         def bad_metric(q):
             # Metric with large gradient for numerical instability
             u, v = q[0], q[1]
-            return np.array([[1.0 + 100*u**2, 0.0], [0.0, 1.0 + 100*v**2]])
+            return np.array([[1.0 + 100 * u**2, 0.0], [0.0, 1.0 + 100 * v**2]])
 
         def bad_grad(q):
             u, v = q[0], q[1]
-            du_g = np.array([[200*u, 0.0], [0.0, 0.0]])
-            dv_g = np.array([[0.0, 0.0], [0.0, 200*v]])
+            du_g = np.array([[200 * u, 0.0], [0.0, 0.0]])
+            dv_g = np.array([[0.0, 0.0], [0.0, 200 * v]])
             return du_g, dv_g
 
         strip = Strip(w=2.0)
@@ -324,8 +352,14 @@ class TestIntegrateGeodesic:
             warnings.simplefilter("always")
             try:
                 traj_q, traj_v, info = integrate_geodesic(
-                    q0, v0, t_final, dt, bad_metric, bad_grad, strip,
-                    energy_tolerance=1e-3
+                    q0,
+                    v0,
+                    t_final,
+                    dt,
+                    bad_metric,
+                    bad_grad,
+                    strip,
+                    energy_tolerance=1e-3,
                 )
             except GeodesicIntegrationError:
                 pass  # Expected for this test
@@ -336,6 +370,7 @@ class TestIntegrateGeodesic:
 
     def test_save_every_parameter(self):
         """Test save_every parameter for trajectory storage."""
+
         def flat_metric(q):
             return np.eye(2)
 
@@ -350,8 +385,7 @@ class TestIntegrateGeodesic:
         save_every = 10
 
         traj_q, traj_v, info = integrate_geodesic(
-            q0, v0, t_final, dt, flat_metric, flat_grad, strip,
-            save_every=save_every
+            q0, v0, t_final, dt, flat_metric, flat_grad, strip, save_every=save_every
         )
 
         n_steps = int(np.ceil(t_final / dt))
@@ -363,6 +397,7 @@ class TestIntegrateGeodesic:
 
     def test_integration_statistics(self):
         """Test integration statistics reporting."""
+
         def flat_metric(q):
             return np.eye(2)
 
@@ -370,8 +405,8 @@ class TestIntegrateGeodesic:
             return np.zeros((2, 2)), np.zeros((2, 2))
 
         strip = Strip(w=1.0)
-        q0 = np.array([0.0, 0.8])   # Near seam
-        v0 = np.array([1.0, 0.5])   # Will cross seam
+        q0 = np.array([0.0, 0.8])  # Near seam
+        v0 = np.array([1.0, 0.5])  # Will cross seam
         t_final = 2.0
         dt = 0.01
 
@@ -381,10 +416,18 @@ class TestIntegrateGeodesic:
 
         # Check required info fields
         required_fields = [
-            "success", "n_steps", "n_saved", "final_time", "dt",
-            "initial_energy", "final_energy", "energy_drift",
-            "max_energy_error", "seam_crossings", "energy_conservation",
-            "trajectory_length"
+            "success",
+            "n_steps",
+            "n_saved",
+            "final_time",
+            "dt",
+            "initial_energy",
+            "final_energy",
+            "energy_drift",
+            "max_energy_error",
+            "seam_crossings",
+            "energy_conservation",
+            "trajectory_length",
         ]
 
         for field in required_fields:
@@ -399,6 +442,7 @@ class TestAdaptiveGeodesicStep:
 
     def test_adaptive_step_accuracy(self):
         """Test adaptive step improves accuracy."""
+
         def constant_metric(q):
             return np.eye(2)
 
@@ -420,14 +464,15 @@ class TestAdaptiveGeodesicStep:
 
     def test_adaptive_step_rejection(self):
         """Test step rejection for large errors."""
+
         def varying_metric(q):
             u, v = q[0], q[1]
             return np.array([[1.0 + u**2, 0.0], [0.0, 1.0 + v**2]])
 
         def varying_grad(q):
             u, v = q[0], q[1]
-            du_g = np.array([[2*u, 0.0], [0.0, 0.0]])
-            dv_g = np.array([[0.0, 0.0], [0.0, 2*v]])
+            du_g = np.array([[2 * u, 0.0], [0.0, 0.0]])
+            dv_g = np.array([[0.0, 0.0], [0.0, 2 * v]])
             return du_g, dv_g
 
         strip = Strip(w=2.0)
@@ -448,6 +493,7 @@ class TestGeodesicDistance:
 
     def test_distance_flat_metric(self):
         """Test geodesic distance in flat metric equals Euclidean."""
+
         def flat_metric(q):
             return np.eye(2)
 
@@ -465,6 +511,7 @@ class TestGeodesicDistance:
 
     def test_distance_same_point(self):
         """Test distance from point to itself is zero."""
+
         def metric_fn(q):
             return np.eye(2)
 
@@ -479,6 +526,7 @@ class TestGeodesicDistance:
 
     def test_distance_symmetry(self):
         """Test that geodesic distance is symmetric."""
+
         def metric_fn(q):
             return np.eye(2)
 

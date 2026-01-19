@@ -1,7 +1,8 @@
 """Fisher-Rao metric pullback for model-aware embeddings."""
 
+from typing import Callable
+
 import numpy as np
-from typing import Union, Optional, Callable
 from scipy.special import softmax
 
 
@@ -112,9 +113,7 @@ def rescale_by_metric(X: np.ndarray, G: np.ndarray, reg: float = 1e-6) -> np.nda
 
 
 def pullback_metric(
-    embedding_func: Callable,
-    X: np.ndarray,
-    epsilon: float = 1e-6
+    embedding_func: Callable, X: np.ndarray, epsilon: float = 1e-6
 ) -> np.ndarray:
     """Compute pullback metric via finite differences.
 
@@ -171,7 +170,7 @@ def riemannian_distance(
     y: np.ndarray,
     G_x: np.ndarray,
     G_y: np.ndarray,
-    method: str = "midpoint"
+    method: str = "midpoint",
 ) -> float:
     """Approximate Riemannian distance using metric tensors.
 

@@ -1,7 +1,8 @@
 """Multiplicative transport operations (Poisson kernel via log/Haar)."""
 
+from typing import Union
+
 import numpy as np
-from typing import Union, Optional
 
 
 def log_map(X: np.ndarray, eps: float = 1e-6) -> np.ndarray:
@@ -27,7 +28,9 @@ def log_map(X: np.ndarray, eps: float = 1e-6) -> np.ndarray:
     return np.log(np.abs(X) + eps)
 
 
-def poisson_kernel_log(delta: Union[float, np.ndarray], t: float) -> Union[float, np.ndarray]:
+def poisson_kernel_log(
+    delta: Union[float, np.ndarray], t: float
+) -> Union[float, np.ndarray]:
     """Poisson kernel in log-domain for multiplicative transport.
 
     Parameters
@@ -77,7 +80,9 @@ def haar_measure_weight(y: np.ndarray, eps: float = 1e-10) -> np.ndarray:
     return 1.0 / (np.abs(y) + eps)
 
 
-def multiplicative_distance(X: np.ndarray, Y: np.ndarray, eps: float = 1e-6) -> np.ndarray:
+def multiplicative_distance(
+    X: np.ndarray, Y: np.ndarray, eps: float = 1e-6
+) -> np.ndarray:
     """Compute distance in multiplicative (log) space.
 
     Parameters
@@ -154,7 +159,9 @@ def poisson_affinity_matrix(X: np.ndarray, tau: float, eps: float = 1e-6) -> np.
     return W
 
 
-def multiplicative_heat_kernel(X: np.ndarray, t: float, eps: float = 1e-6) -> np.ndarray:
+def multiplicative_heat_kernel(
+    X: np.ndarray, t: float, eps: float = 1e-6
+) -> np.ndarray:
     """Heat kernel for multiplicative transport via log-space diffusion.
 
     Parameters
@@ -186,9 +193,9 @@ def multiplicative_heat_kernel(X: np.ndarray, t: float, eps: float = 1e-6) -> np
     for i in range(n):
         for j in range(n):
             # Squared distance in log space
-            dist2 = np.sum((log_X[i] - log_X[j])**2)
+            dist2 = np.sum((log_X[i] - log_X[j]) ** 2)
             # Gaussian kernel with variance 2t
-            H_t[i, j] = np.exp(-dist2 / (4 * t)) / (4 * np.pi * t)**(X.shape[1] / 2)
+            H_t[i, j] = np.exp(-dist2 / (4 * t)) / (4 * np.pi * t) ** (X.shape[1] / 2)
 
     # Normalize diagonal
     np.fill_diagonal(H_t, 0)

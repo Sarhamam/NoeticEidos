@@ -1,18 +1,25 @@
 """Mellin balance analysis and s=0.5 optimization for dual transport coupling."""
 
+import warnings
+from typing import Any, Callable, Dict, Optional, Tuple, Union
+
 import numpy as np
 from scipy.sparse import csr_matrix
-from typing import Callable, Tuple, Dict, Any, Optional, Union
-import warnings
 
 from graphs.knn import build_graph
 from graphs.laplacian import laplacian
 
 
-def mellin_coupled_stat(X: np.ndarray, stat_fn: Callable, s: float = 0.5,
-                       k: int = 16, sigma: Union[str, float] = "median",
-                       tau: float = 1.0, eps: float = 1e-6,
-                       seed: Optional[int] = None) -> float:
+def mellin_coupled_stat(
+    X: np.ndarray,
+    stat_fn: Callable,
+    s: float = 0.5,
+    k: int = 16,
+    sigma: Union[str, float] = "median",
+    tau: float = 1.0,
+    eps: float = 1e-6,
+    seed: Optional[int] = None,
+) -> float:
     """Compute statistic on Mellin-coupled graph.
 
     Parameters
@@ -58,8 +65,8 @@ def mellin_coupled_stat(X: np.ndarray, stat_fn: Callable, s: float = 0.5,
 
     # Ensure same sparsity pattern for proper coupling
     # Take union of edges (or intersection - depends on desired behavior)
-    A_add_dense = A_add.toarray() if hasattr(A_add, 'toarray') else A_add
-    A_mult_dense = A_mult.toarray() if hasattr(A_mult, 'toarray') else A_mult
+    A_add_dense = A_add.toarray() if hasattr(A_add, "toarray") else A_add
+    A_mult_dense = A_mult.toarray() if hasattr(A_mult, "toarray") else A_mult
 
     # Mellin coupling: A_s = (A_add)^s ⊙ (A_mult)^(1-s)
     # Handle zero entries carefully
@@ -90,12 +97,13 @@ def mellin_coupled_stat(X: np.ndarray, stat_fn: Callable, s: float = 0.5,
     try:
         return float(stat_fn(L_coupled))
     except Exception as e:
-        warnings.warn(f"Statistic computation failed: {e}")
+        warnings.warn(f"Statistic computation failed: {e}", stacklevel=2)
         return 0.0
 
 
-def balance_curve(X: np.ndarray, stat_fn: Callable,
-                 s_range: np.ndarray = None, **kwargs) -> Tuple[np.ndarray, np.ndarray]:
+def balance_curve(
+    X: np.ndarray, stat_fn: Callable, s_range: np.ndarray = None, **kwargs
+) -> Tuple[np.ndarray, np.ndarray]:
     """Evaluate statistic across Mellin coupling parameters.
 
     Parameters
@@ -126,15 +134,19 @@ def balance_curve(X: np.ndarray, stat_fn: Callable,
             stat_val = mellin_coupled_stat(X, stat_fn, s=s, **kwargs)
             stat_values.append(stat_val)
         except Exception as e:
-            warnings.warn(f"Failed to compute statistic at s={s}: {e}")
+            warnings.warn(f"Failed to compute statistic at s={s}: {e}", stacklevel=2)
             stat_values.append(0.0)
 
     return s_range, np.array(stat_values)
 
 
-def balance_score(X: np.ndarray, stat_fn: Callable,
-                 s_range: np.ndarray = None, target_s: float = 0.5,
-                 **kwargs) -> Tuple[float, np.ndarray, Dict[str, Any]]:
+def balance_score(
+    X: np.ndarray,
+    stat_fn: Callable,
+    s_range: np.ndarray = None,
+    target_s: float = 0.5,
+    **kwargs,
+) -> Tuple[float, np.ndarray, Dict[str, Any]]:
     """Find Mellin parameter that maximizes statistic stability.
 
     Parameters
@@ -170,7 +182,7 @@ def balance_score(X: np.ndarray, stat_fn: Callable,
     s_values, stat_values = balance_curve(X, stat_fn, s_range=s_range, **kwargs)
 
     if len(stat_values) == 0 or np.all(~np.isfinite(stat_values)):
-        warnings.warn("No valid statistic values - returning default")
+        warnings.warn("No valid statistic values - returning default", stacklevel=2)
         return target_s, np.array([]), {"converged": False, "peak_quality": 0.0}
 
     # Find maximum
@@ -187,14 +199,15 @@ def balance_score(X: np.ndarray, stat_fn: Callable,
         "max_statistic": max_stat,
         "deviation_from_target": abs(best_s - target_s),
         "s_range": s_values,
-        "stat_values": stat_values
+        "stat_values": stat_values,
     }
 
     return float(best_s), stat_values, info
 
 
-def _assess_peak_quality(s_values: np.ndarray, stat_values: np.ndarray,
-                        max_idx: int, target_s: float) -> float:
+def _assess_peak_quality(
+    s_values: np.ndarray, stat_values: np.ndarray, max_idx: int, target_s: float
+) -> float:
     """Assess quality of peak in balance curve.
 
     Returns a score in [0, 1] indicating how well-defined the peak is.
@@ -216,8 +229,9 @@ def _assess_peak_quality(s_values: np.ndarray, stat_values: np.ndarray,
         max_val = stat_values[max_idx]
 
         if max_val > max(left_val, right_val):
-            prominence_score = min(1.0, (max_val - max(left_val, right_val)) /
-                                 max(1e-12, max_val))
+            prominence_score = min(
+                1.0, (max_val - max(left_val, right_val)) / max(1e-12, max_val)
+            )
 
     # Factor 3: Curve smoothness (penalize noise)
     smoothness_score = 0.0
@@ -235,9 +249,13 @@ def _assess_peak_quality(s_values: np.ndarray, stat_values: np.ndarray,
     return min(1.0, max(0.0, quality))
 
 
-def mellin_stability_test(X: np.ndarray, stat_fn: Callable,
-                         trials: int = 10, noise_level: float = 0.1,
-                         seed: Optional[int] = None) -> Dict[str, Any]:
+def mellin_stability_test(
+    X: np.ndarray,
+    stat_fn: Callable,
+    trials: int = 10,
+    noise_level: float = 0.1,
+    seed: Optional[int] = None,
+) -> Dict[str, Any]:
     """Test stability of Mellin balance under perturbations.
 
     Parameters
@@ -276,16 +294,16 @@ def mellin_stability_test(X: np.ndarray, stat_fn: Callable,
             peak_qualities.append(info["peak_quality"])
 
         except Exception as e:
-            warnings.warn(f"Trial {trial} failed: {e}")
+            warnings.warn(f"Trial {trial} failed: {e}", stacklevel=2)
             continue
 
     if len(optimal_s_values) == 0:
         return {
             "mean_optimal_s": 0.5,
-            "std_optimal_s": float('inf'),
+            "std_optimal_s": float("inf"),
             "stability_score": 0.0,
             "fraction_converged": 0.0,
-            "mean_peak_quality": 0.0
+            "mean_peak_quality": 0.0,
         }
 
     optimal_s_values = np.array(optimal_s_values)
@@ -308,13 +326,16 @@ def mellin_stability_test(X: np.ndarray, stat_fn: Callable,
         "fraction_converged": float(fraction_converged),
         "mean_peak_quality": float(mean_peak_quality),
         "optimal_s_values": optimal_s_values,
-        "peak_qualities": peak_qualities
+        "peak_qualities": peak_qualities,
     }
 
 
-def cross_mode_balance_analysis(X: np.ndarray, stat_fns: Dict[str, Callable],
-                               s_resolution: int = 21,
-                               seed: Optional[int] = None) -> Dict[str, Dict[str, Any]]:
+def cross_mode_balance_analysis(
+    X: np.ndarray,
+    stat_fns: Dict[str, Callable],
+    s_resolution: int = 21,
+    seed: Optional[int] = None,
+) -> Dict[str, Dict[str, Any]]:
     """Comprehensive balance analysis across multiple statistics.
 
     Parameters
@@ -339,7 +360,9 @@ def cross_mode_balance_analysis(X: np.ndarray, stat_fns: Dict[str, Callable],
     for stat_name, stat_fn in stat_fns.items():
         try:
             # Balance curve
-            s_values, stat_values = balance_curve(X, stat_fn, s_range=s_range, seed=seed)
+            s_values, stat_values = balance_curve(
+                X, stat_fn, s_range=s_range, seed=seed
+            )
 
             # Optimal point
             best_s, _, info = balance_score(X, stat_fn, s_range=s_range, seed=seed)
@@ -351,24 +374,27 @@ def cross_mode_balance_analysis(X: np.ndarray, stat_fns: Dict[str, Callable],
                 "balance_curve": (s_values, stat_values),
                 "optimal_s": best_s,
                 "peak_info": info,
-                "stability": stability_info
+                "stability": stability_info,
             }
 
         except Exception as e:
-            warnings.warn(f"Analysis failed for {stat_name}: {e}")
+            warnings.warn(f"Analysis failed for {stat_name}: {e}", stacklevel=2)
             results[stat_name] = {
                 "balance_curve": (np.array([]), np.array([])),
                 "optimal_s": 0.5,
                 "peak_info": {"converged": False},
-                "stability": {"stability_score": 0.0}
+                "stability": {"stability_score": 0.0},
             }
 
     return results
 
 
-def additive_multiplicative_interpolation(X: np.ndarray, stat_fn: Callable,
-                                        s_fine: np.ndarray = None,
-                                        seed: Optional[int] = None) -> Dict[str, Any]:
+def additive_multiplicative_interpolation(
+    X: np.ndarray,
+    stat_fn: Callable,
+    s_fine: np.ndarray = None,
+    seed: Optional[int] = None,
+) -> Dict[str, Any]:
     """Detailed analysis of additive-multiplicative interpolation.
 
     Parameters
@@ -403,8 +429,9 @@ def additive_multiplicative_interpolation(X: np.ndarray, stat_fn: Callable,
     # Find critical points (where derivative ≈ 0)
     critical_indices = []
     for i in range(1, len(first_deriv) - 1):
-        if (first_deriv[i-1] * first_deriv[i+1] <= 0 and
-            abs(first_deriv[i]) < 0.1 * np.std(first_deriv)):
+        if first_deriv[i - 1] * first_deriv[i + 1] <= 0 and abs(
+            first_deriv[i]
+        ) < 0.1 * np.std(first_deriv):
             critical_indices.append(i)
 
     critical_points = [(s_values[i], stat_values[i]) for i in critical_indices]
@@ -428,8 +455,13 @@ def additive_multiplicative_interpolation(X: np.ndarray, stat_fn: Callable,
         "right_monotonic": right_monotonic,
         "symmetric_about_half": left_monotonic and right_monotonic,
         "mean_curvature": float(mean_curvature),
-        "max_curvature_point": (s_values[max_curvature_idx], stat_values[max_curvature_idx]),
+        "max_curvature_point": (
+            s_values[max_curvature_idx],
+            stat_values[max_curvature_idx],
+        ),
         "additive_value": stat_values[0] if len(stat_values) > 0 else 0.0,
         "multiplicative_value": stat_values[-1] if len(stat_values) > 0 else 0.0,
-        "balanced_value": stat_values[len(stat_values)//2] if len(stat_values) > 0 else 0.0
+        "balanced_value": (
+            stat_values[len(stat_values) // 2] if len(stat_values) > 0 else 0.0
+        ),
     }

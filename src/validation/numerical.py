@@ -1,21 +1,29 @@
 """Numerical stability guards for geometric ML computations."""
 
+from __future__ import annotations
+
+import warnings
+from typing import TYPE_CHECKING, Any, Dict, List, Union
+
 import numpy as np
 from scipy.sparse import issparse
-from typing import Union, Dict, Any, Optional, List, Tuple
-import warnings
-import time
+
+if TYPE_CHECKING:
+    from scipy.sparse import csr_matrix
 
 
 class NumericalStabilityError(Exception):
     """Raised when numerical stability conditions are violated."""
+
     pass
 
 
-def monitor_mass_conservation(u_initial: np.ndarray,
-                            u_final: np.ndarray,
-                            tolerance: float = 1e-6,
-                            relative: bool = True) -> Dict[str, Any]:
+def monitor_mass_conservation(
+    u_initial: np.ndarray,
+    u_final: np.ndarray,
+    tolerance: float = 1e-6,
+    relative: bool = True,
+) -> Dict[str, Any]:
     """Monitor mass conservation in diffusion processes.
 
     Parameters
@@ -86,7 +94,7 @@ def monitor_mass_conservation(u_initial: np.ndarray,
         "finite_initial": finite_initial,
         "finite_final": finite_final,
         "negative_initial": negative_initial,
-        "negative_final": negative_final
+        "negative_final": negative_final,
     }
 
     if not conserved:
@@ -105,10 +113,12 @@ def monitor_mass_conservation(u_initial: np.ndarray,
     return report
 
 
-def validate_cg_convergence(residual_history: List[float],
-                          tolerance: float = 1e-6,
-                          max_stagnation_ratio: float = 0.99,
-                          min_progress_steps: int = 10) -> Dict[str, Any]:
+def validate_cg_convergence(
+    residual_history: List[float],
+    tolerance: float = 1e-6,
+    max_stagnation_ratio: float = 0.99,
+    min_progress_steps: int = 10,
+) -> Dict[str, Any]:
     """Validate CG convergence and detect stagnation.
 
     Parameters
@@ -140,13 +150,14 @@ def validate_cg_convergence(residual_history: List[float],
 
     # Check for non-finite residuals
     if not np.all(np.isfinite(residuals)):
-        raise NumericalStabilityError(
-            f"Non-finite residuals detected: {residuals}"
-        )
+        raise NumericalStabilityError(f"Non-finite residuals detected: {residuals}")
 
     # Check for divergence
     if residuals[-1] > residuals[0]:
-        warnings.warn(f"CG residual increased from {residuals[0]:.2e} to {residuals[-1]:.2e}")
+        warnings.warn(
+            f"CG residual increased from {residuals[0]:.2e} to {residuals[-1]:.2e}",
+            stacklevel=2,
+        )
 
     # Check for convergence
     converged = residuals[-1] <= tolerance
@@ -159,8 +170,8 @@ def validate_cg_convergence(residual_history: List[float],
     if n_iterations >= min_progress_steps:
         # Look for consecutive steps with minimal progress
         for i in range(min_progress_steps, n_iterations):
-            if residuals[i-1] > 1e-15:  # Avoid division by zero
-                ratio = residuals[i] / residuals[i-1]
+            if residuals[i - 1] > 1e-15:  # Avoid division by zero
+                ratio = residuals[i] / residuals[i - 1]
                 if ratio >= max_stagnation_ratio:
                     stagnation_detected = True
                     stagnation_start = i - 1
@@ -189,8 +200,10 @@ def validate_cg_convergence(residual_history: List[float],
         "n_iterations": n_iterations,
         "stagnation_detected": stagnation_detected,
         "stagnation_start": stagnation_start,
-        "convergence_rate": float(convergence_rate) if convergence_rate is not None else None,
-        "tolerance": tolerance
+        "convergence_rate": (
+            float(convergence_rate) if convergence_rate is not None else None
+        ),
+        "tolerance": tolerance,
     }
 
     # Raise errors for problematic behavior
@@ -209,9 +222,9 @@ def validate_cg_convergence(residual_history: List[float],
     return report
 
 
-def check_eigenvalue_validity(eigenvalues: np.ndarray,
-                            matrix_type: str = "laplacian",
-                            tolerance: float = 1e-12) -> Dict[str, Any]:
+def check_eigenvalue_validity(
+    eigenvalues: np.ndarray, matrix_type: str = "laplacian", tolerance: float = 1e-12
+) -> Dict[str, Any]:
     """Validate eigenvalue properties for different matrix types.
 
     Parameters
@@ -269,9 +282,14 @@ def check_eigenvalue_validity(eigenvalues: np.ndarray,
 
         # For connected graphs, should have exactly one zero eigenvalue
         if zero_evals == 0:
-            warnings.warn("No zero eigenvalue found - unusual for Laplacian")
+            warnings.warn(
+                "No zero eigenvalue found - unusual for Laplacian", stacklevel=2
+            )
         elif zero_evals > 1:
-            warnings.warn(f"Multiple zero eigenvalues ({zero_evals}) - disconnected graph")
+            warnings.warn(
+                f"Multiple zero eigenvalues ({zero_evals}) - disconnected graph",
+                stacklevel=2,
+            )
 
     elif matrix_type == "psd":
         # Positive semidefinite: all eigenvalues >= 0
@@ -287,7 +305,7 @@ def check_eigenvalue_validity(eigenvalues: np.ndarray,
         condition_number = np.max(positive_evals) / np.min(positive_evals)
         well_conditioned = condition_number < 1e12
     else:
-        condition_number = float('inf')
+        condition_number = float("inf")
         well_conditioned = False
 
     return {
@@ -299,7 +317,11 @@ def check_eigenvalue_validity(eigenvalues: np.ndarray,
         "max_eigenvalue": float(np.max(evals_real)),
         "condition_number": float(condition_number),
         "well_conditioned": well_conditioned,
-        "spectral_gap": float(np.min(evals_real[evals_real > tolerance])) if len(positive_evals) > 0 else 0.0
+        "spectral_gap": (
+            float(np.min(evals_real[evals_real > tolerance]))
+            if len(positive_evals) > 0
+            else 0.0
+        ),
     }
 
 
@@ -338,20 +360,22 @@ def validate_float64_precision(arrays: Dict[str, np.ndarray]) -> Dict[str, Any]:
     report = {
         "precision_adequate": len(precision_issues) == 0,
         "dtypes": dtypes,
-        "issues": precision_issues
+        "issues": precision_issues,
     }
 
     if precision_issues:
         warnings.warn(
             f"Precision issues detected: {'; '.join(precision_issues)}. "
-            f"Consider using float64 for critical computations."
+            f"Consider using float64 for critical computations.",
+            stacklevel=2,
         )
 
     return report
 
 
-def check_matrix_conditioning(matrix: Union[np.ndarray, 'csr_matrix'],
-                            condition_threshold: float = 1e12) -> Dict[str, Any]:
+def check_matrix_conditioning(
+    matrix: Union[np.ndarray, "csr_matrix"], condition_threshold: float = 1e12
+) -> Dict[str, Any]:
     """Check matrix conditioning and recommend fixes for ill-conditioning.
 
     Parameters
@@ -369,40 +393,45 @@ def check_matrix_conditioning(matrix: Union[np.ndarray, 'csr_matrix'],
     if issparse(matrix):
         # For sparse matrices, estimate condition number via eigenvalues
         from solvers.lanczos import topk_eigs
+
         try:
             # Get largest and smallest eigenvalues
             max_evals, _ = topk_eigs(matrix, k=1, which="LM")
             min_evals, _ = topk_eigs(matrix, k=1, which="SM")
 
             max_eval = max_evals[0] if len(max_evals) > 0 else 1.0
-            min_eval = min_evals[0] if len(min_evals) > 0 and min_evals[0] > 1e-12 else 1e-12
+            min_eval = (
+                min_evals[0] if len(min_evals) > 0 and min_evals[0] > 1e-12 else 1e-12
+            )
 
             condition_number = max_eval / min_eval
 
         except Exception:
-            condition_number = float('inf')
+            condition_number = float("inf")
     else:
         # Dense matrix condition number
         try:
             condition_number = np.linalg.cond(matrix)
         except np.linalg.LinAlgError:
-            condition_number = float('inf')
+            condition_number = float("inf")
 
     well_conditioned = condition_number < condition_threshold
 
     # Recommendations for ill-conditioned matrices
     recommendations = []
     if not well_conditioned:
-        recommendations.extend([
-            "Add regularization (α parameter in solvers)",
-            "Use preconditioning for iterative methods",
-            "Check for rank deficiency or near-singular rows/columns",
-            "Consider eigenvalue filtering for very small eigenvalues"
-        ])
+        recommendations.extend(
+            [
+                "Add regularization (α parameter in solvers)",
+                "Use preconditioning for iterative methods",
+                "Check for rank deficiency or near-singular rows/columns",
+                "Consider eigenvalue filtering for very small eigenvalues",
+            ]
+        )
 
     return {
         "well_conditioned": well_conditioned,
         "condition_number": float(condition_number),
         "threshold": condition_threshold,
-        "recommendations": recommendations
+        "recommendations": recommendations,
     }

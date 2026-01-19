@@ -1,16 +1,19 @@
 """Spectral measures for both additive and multiplicative transport modes."""
 
+import warnings
+from typing import Optional, Union
+
 import numpy as np
 from scipy.sparse import csr_matrix, issparse
-from typing import Union, Optional
-import warnings
 
 from graphs.knn import build_graph
 from graphs.laplacian import laplacian
 from solvers.lanczos import topk_eigs
 
 
-def spectral_gap(L: Union[np.ndarray, csr_matrix], k: int = 2, tol: float = 1e-9) -> float:
+def spectral_gap(
+    L: Union[np.ndarray, csr_matrix], k: int = 2, tol: float = 1e-9
+) -> float:
     """Compute smallest nonzero eigenvalue (spectral gap) of Laplacian.
 
     Parameters
@@ -49,13 +52,17 @@ def spectral_gap(L: Union[np.ndarray, csr_matrix], k: int = 2, tol: float = 1e-9
     nonzero_evals = evals[evals > tol]
 
     if len(nonzero_evals) == 0:
-        warnings.warn("No nonzero eigenvalues found - disconnected graph?")
+        warnings.warn(
+            "No nonzero eigenvalues found - disconnected graph?", stacklevel=2
+        )
         return 0.0
 
     return float(nonzero_evals[0])
 
 
-def spectral_entropy(L: Union[np.ndarray, csr_matrix], k: int = 10, tol: float = 1e-9) -> float:
+def spectral_entropy(
+    L: Union[np.ndarray, csr_matrix], k: int = 10, tol: float = 1e-9
+) -> float:
     """Compute Shannon entropy of first k nonzero eigenvalues.
 
     Parameters
@@ -80,7 +87,7 @@ def spectral_entropy(L: Union[np.ndarray, csr_matrix], k: int = 10, tol: float =
     """
     if issparse(L):
         try:
-            evals, _, _ = topk_eigs(L, k=k+2, which="SM")
+            evals, _, _ = topk_eigs(L, k=k + 2, which="SM")
         except:
             evals, _ = np.linalg.eigh(L.toarray())
     else:
@@ -94,7 +101,7 @@ def spectral_entropy(L: Union[np.ndarray, csr_matrix], k: int = 10, tol: float =
         return 0.0
 
     # Take first k nonzero eigenvalues
-    k_evals = nonzero_evals[:min(k, len(nonzero_evals))]
+    k_evals = nonzero_evals[: min(k, len(nonzero_evals))]
 
     # Normalize to probabilities
     total = np.sum(k_evals)
@@ -111,8 +118,13 @@ def spectral_entropy(L: Union[np.ndarray, csr_matrix], k: int = 10, tol: float =
     return float(entropy)
 
 
-def spectral_gap_additive(X: np.ndarray, k: int = 2, sigma: Union[float, str] = "median",
-                         neighbors: int = 16, seed: Optional[int] = None) -> float:
+def spectral_gap_additive(
+    X: np.ndarray,
+    k: int = 2,
+    sigma: Union[float, str] = "median",
+    neighbors: int = 16,
+    seed: Optional[int] = None,
+) -> float:
     """Compute spectral gap using additive (Gaussian) transport.
 
     Parameters
@@ -138,8 +150,13 @@ def spectral_gap_additive(X: np.ndarray, k: int = 2, sigma: Union[float, str] = 
     return spectral_gap(L, k=k)
 
 
-def spectral_entropy_additive(X: np.ndarray, k: int = 10, sigma: Union[float, str] = "median",
-                             neighbors: int = 16, seed: Optional[int] = None) -> float:
+def spectral_entropy_additive(
+    X: np.ndarray,
+    k: int = 10,
+    sigma: Union[float, str] = "median",
+    neighbors: int = 16,
+    seed: Optional[int] = None,
+) -> float:
     """Compute spectral entropy using additive (Gaussian) transport.
 
     Parameters
@@ -165,9 +182,14 @@ def spectral_entropy_additive(X: np.ndarray, k: int = 10, sigma: Union[float, st
     return spectral_entropy(L, k=k)
 
 
-def spectral_gap_multiplicative(X: np.ndarray, k: int = 2, tau: float = 1.0,
-                               eps: float = 1e-6, neighbors: int = 16,
-                               seed: Optional[int] = None) -> float:
+def spectral_gap_multiplicative(
+    X: np.ndarray,
+    k: int = 2,
+    tau: float = 1.0,
+    eps: float = 1e-6,
+    neighbors: int = 16,
+    seed: Optional[int] = None,
+) -> float:
     """Compute spectral gap using multiplicative (Poisson) transport.
 
     Parameters
@@ -195,9 +217,14 @@ def spectral_gap_multiplicative(X: np.ndarray, k: int = 2, tau: float = 1.0,
     return spectral_gap(L, k=k)
 
 
-def spectral_entropy_multiplicative(X: np.ndarray, k: int = 10, tau: float = 1.0,
-                                   eps: float = 1e-6, neighbors: int = 16,
-                                   seed: Optional[int] = None) -> float:
+def spectral_entropy_multiplicative(
+    X: np.ndarray,
+    k: int = 10,
+    tau: float = 1.0,
+    eps: float = 1e-6,
+    neighbors: int = 16,
+    seed: Optional[int] = None,
+) -> float:
     """Compute spectral entropy using multiplicative (Poisson) transport.
 
     Parameters
@@ -225,7 +252,9 @@ def spectral_entropy_multiplicative(X: np.ndarray, k: int = 10, tau: float = 1.0
     return spectral_entropy(L, k=k)
 
 
-def eigenvalue_distribution(L: Union[np.ndarray, csr_matrix], k: int = 20) -> np.ndarray:
+def eigenvalue_distribution(
+    L: Union[np.ndarray, csr_matrix], k: int = 20
+) -> np.ndarray:
     """Get eigenvalue distribution for analysis.
 
     Parameters
@@ -252,8 +281,9 @@ def eigenvalue_distribution(L: Union[np.ndarray, csr_matrix], k: int = 20) -> np
     return evals[:k]
 
 
-def effective_resistance_sum(L: Union[np.ndarray, csr_matrix],
-                           sample_size: int = 100, seed: Optional[int] = None) -> float:
+def effective_resistance_sum(
+    L: Union[np.ndarray, csr_matrix], sample_size: int = 100, seed: Optional[int] = None
+) -> float:
     """Estimate sum of effective resistances via sampling.
 
     Parameters
@@ -287,7 +317,7 @@ def effective_resistance_sum(L: Union[np.ndarray, csr_matrix],
     if issparse(L):
         try:
             # Use eigendecomposition for pseudoinverse
-            evals, evecs = topk_eigs(L, k=min(n-1, 50), which="SM")
+            evals, evecs = topk_eigs(L, k=min(n - 1, 50), which="SM")
             # Remove zero eigenvalue
             nonzero_mask = evals > 1e-12
             evals_nz = evals[nonzero_mask]

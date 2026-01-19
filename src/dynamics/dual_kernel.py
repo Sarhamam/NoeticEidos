@@ -5,14 +5,14 @@ alternating between diffusive (Gaussian/heat) and harmonic (Poisson)
 propagation modes.
 """
 
+from dataclasses import dataclass
+from typing import Dict, List, Literal, Optional
+
 import numpy as np
-from scipy.sparse import csr_matrix, eye, diags
-from scipy.sparse.linalg import cg, spsolve
-from typing import Optional, Dict, Any, Tuple, List, Literal
-from dataclasses import dataclass, field
+from scipy.sparse import csr_matrix, diags, eye
+from scipy.sparse.linalg import cg
 
 from ..nep.core.state import NGState
-from ..solvers.cg import cg_solve
 
 
 @dataclass
@@ -44,8 +44,8 @@ class DualKernelConfig:
     heat_timestep: float = 0.01
     heat_iterations: int = 10
     poisson_alpha: float = 1e-4
-    boundary_doctrine: str = 'NN'
-    alternation_schedule: str = 'regular'
+    boundary_doctrine: str = "NN"
+    alternation_schedule: str = "regular"
     energy_tolerance: float = 1e-3
     phase_tolerance: float = 1e-2
     max_cg_iter: int = 1000
@@ -63,10 +63,12 @@ class DualKernelEngine:
     ||∇(K_G(τ)ψ)||² = ⟨ψ, √(-Δ) K_P(s)ψ⟩
     """
 
-    def __init__(self,
-                laplacian: csr_matrix,
-                multiplicative_laplacian: Optional[csr_matrix] = None,
-                config: Optional[DualKernelConfig] = None):
+    def __init__(
+        self,
+        laplacian: csr_matrix,
+        multiplicative_laplacian: Optional[csr_matrix] = None,
+        config: Optional[DualKernelConfig] = None,
+    ):
         """Initialize dual kernel engine.
 
         Parameters
@@ -94,25 +96,29 @@ class DualKernelEngine:
     def _setup_operators(self):
         """Precompute operators for efficiency."""
         # Identity matrix
-        self.I = eye(self.n, format='csr')
+        self.I = eye(self.n, format="csr")
 
         # Heat operator: (I + δt * L_add) - Use additive for diffusion
         self.heat_operator = self.I + self.config.heat_timestep * self.laplacian
 
         # Poisson operator: (L_mult + αI) - Use multiplicative for harmonic
-        self.poisson_operator = self.multiplicative_laplacian + self.config.poisson_alpha * self.I
+        self.poisson_operator = (
+            self.multiplicative_laplacian + self.config.poisson_alpha * self.I
+        )
 
         # Compute degree matrices for energy calculations
         degrees_add = np.array(self.laplacian.sum(axis=1)).flatten()
-        self.degree_matrix_additive = diags(degrees_add, format='csr')
+        self.degree_matrix_additive = diags(degrees_add, format="csr")
 
         degrees_mult = np.array(self.multiplicative_laplacian.sum(axis=1)).flatten()
-        self.degree_matrix_multiplicative = diags(degrees_mult, format='csr')
+        self.degree_matrix_multiplicative = diags(degrees_mult, format="csr")
 
-    def apply_gaussian_kernel(self,
-                            u: np.ndarray,
-                            n_iter: Optional[int] = None,
-                            boundary_values: Optional[Dict[int, float]] = None) -> np.ndarray:
+    def apply_gaussian_kernel(
+        self,
+        u: np.ndarray,
+        n_iter: Optional[int] = None,
+        boundary_values: Optional[Dict[int, float]] = None,
+    ) -> np.ndarray:
         """Apply Gaussian (heat) kernel.
 
         Solves ∂u/∂t = -L*u using implicit Euler scheme.
@@ -146,10 +152,13 @@ class DualKernelEngine:
                     b[node] = value
 
             # Solve (I + δt*L)u_new = u_current
-            u_new, info = cg(self.heat_operator, b,
-                           x0=u_current,
-                           rtol=self.config.cg_tolerance,
-                           maxiter=self.config.max_cg_iter)
+            u_new, info = cg(
+                self.heat_operator,
+                b,
+                x0=u_current,
+                rtol=self.config.cg_tolerance,
+                maxiter=self.config.max_cg_iter,
+            )
 
             if info != 0:
                 print(f"Warning: CG did not converge in heat step (info={info})")
@@ -163,10 +172,12 @@ class DualKernelEngine:
 
         return u_current
 
-    def apply_poisson_kernel(self,
-                           f: np.ndarray,
-                           boundary_values: Optional[Dict[int, float]] = None,
-                           boundary_flux: Optional[Dict[int, float]] = None) -> np.ndarray:
+    def apply_poisson_kernel(
+        self,
+        f: np.ndarray,
+        boundary_values: Optional[Dict[int, float]] = None,
+        boundary_flux: Optional[Dict[int, float]] = None,
+    ) -> np.ndarray:
         """Apply Poisson (harmonic) kernel.
 
         Solves (L + αI)u = f with mixed boundary conditions.
@@ -200,10 +211,13 @@ class DualKernelEngine:
                 x0[node] = value
 
         # Solve Poisson equation
-        u, info = cg(self.poisson_operator, b,
-                    x0=x0,
-                    rtol=self.config.cg_tolerance,
-                    maxiter=self.config.max_cg_iter)
+        u, info = cg(
+            self.poisson_operator,
+            b,
+            x0=x0,
+            rtol=self.config.cg_tolerance,
+            maxiter=self.config.max_cg_iter,
+        )
 
         if info != 0:
             print(f"Warning: CG did not converge in Poisson step (info={info})")
@@ -215,9 +229,11 @@ class DualKernelEngine:
 
         return u
 
-    def alternate_step(self,
-                      state: NGState,
-                      mode: Literal['gaussian_first', 'poisson_first'] = 'gaussian_first') -> NGState:
+    def alternate_step(
+        self,
+        state: NGState,
+        mode: Literal["gaussian_first", "poisson_first"] = "gaussian_first",
+    ) -> NGState:
         """Perform one alternation step.
 
         Parameters
@@ -241,23 +257,25 @@ class DualKernelEngine:
 
         # Get boundary conditions from state
         boundary_values = {}
-        if state.boundary_sets and 'dirichlet' in state.boundary_sets:
-            for node in state.boundary_sets['dirichlet']:
+        if state.boundary_sets and "dirichlet" in state.boundary_sets:
+            for node in state.boundary_sets["dirichlet"]:
                 boundary_values[node] = u[node]
 
         # Store initial energy
         initial_energy = self.compute_energy(u)
 
-        if mode == 'gaussian_first':
+        if mode == "gaussian_first":
             # Gaussian then Poisson
             u_heat = self.apply_gaussian_kernel(u, boundary_values=boundary_values)
             u_final = self.apply_poisson_kernel(u_heat, boundary_values=boundary_values)
-            sequence = ['gaussian', 'poisson']
+            sequence = ["gaussian", "poisson"]
         else:
             # Poisson then Gaussian
             u_poisson = self.apply_poisson_kernel(u, boundary_values=boundary_values)
-            u_final = self.apply_gaussian_kernel(u_poisson, boundary_values=boundary_values)
-            sequence = ['poisson', 'gaussian']
+            u_final = self.apply_gaussian_kernel(
+                u_poisson, boundary_values=boundary_values
+            )
+            sequence = ["poisson", "gaussian"]
 
         # Compute final energy
         final_energy = self.compute_energy(u_final)
@@ -273,13 +291,15 @@ class DualKernelEngine:
         if new_state.kernel_state is None:
             new_state.kernel_state = {}
 
-        new_state.kernel_state.update({
-            'mode': sequence[-1],
-            'iteration': new_state.kernel_state.get('iteration', 0) + 1,
-            'energy': final_energy,
-            'energy_change': final_energy - initial_energy,
-            'sequence': sequence
-        })
+        new_state.kernel_state.update(
+            {
+                "mode": sequence[-1],
+                "iteration": new_state.kernel_state.get("iteration", 0) + 1,
+                "energy": final_energy,
+                "energy_change": final_energy - initial_energy,
+                "sequence": sequence,
+            }
+        )
 
         # Track history
         self.energy_history.append(final_energy)
@@ -287,10 +307,9 @@ class DualKernelEngine:
 
         return new_state
 
-    def alternate_epochs(self,
-                        initial_state: NGState,
-                        n_epochs: int,
-                        schedule: Optional[str] = None) -> List[NGState]:
+    def alternate_epochs(
+        self, initial_state: NGState, n_epochs: int, schedule: Optional[str] = None
+    ) -> List[NGState]:
         """Run multiple alternation epochs.
 
         Parameters
@@ -315,15 +334,15 @@ class DualKernelEngine:
 
         for epoch in range(n_epochs):
             # Determine mode based on schedule
-            if schedule == 'regular':
-                mode = 'gaussian_first' if epoch % 2 == 0 else 'poisson_first'
-            elif schedule == 'adaptive':
+            if schedule == "regular":
+                mode = "gaussian_first" if epoch % 2 == 0 else "poisson_first"
+            elif schedule == "adaptive":
                 # Adaptive based on energy gradient
                 mode = self._adaptive_mode_selection(current_state)
-            elif schedule == 'stochastic':
-                mode = np.random.choice(['gaussian_first', 'poisson_first'])
+            elif schedule == "stochastic":
+                mode = np.random.choice(["gaussian_first", "poisson_first"])
             else:
-                mode = 'gaussian_first'
+                mode = "gaussian_first"
 
             # Perform alternation
             new_state = self.alternate_step(current_state, mode=mode)
@@ -408,20 +427,18 @@ class DualKernelEngine:
             Selected mode
         """
         if len(self.energy_history) < 2:
-            return 'gaussian_first'
+            return "gaussian_first"
 
         # Check energy trend
         energy_gradient = self.energy_history[-1] - self.energy_history[-2]
 
         # If energy is increasing too much, favor diffusion
         if energy_gradient > self.config.energy_tolerance:
-            return 'gaussian_first'
+            return "gaussian_first"
         else:
-            return 'poisson_first'
+            return "poisson_first"
 
-    def _check_convergence(self,
-                         state1: NGState,
-                         state2: NGState) -> bool:
+    def _check_convergence(self, state1: NGState, state2: NGState) -> bool:
         """Check convergence between consecutive states.
 
         Parameters
@@ -453,9 +470,9 @@ class DualKernelEngine:
 
         return relative_change < self.config.cg_tolerance
 
-    def compute_duality_balance(self,
-                              gaussian_state: np.ndarray,
-                              poisson_state: np.ndarray) -> Dict[str, float]:
+    def compute_duality_balance(
+        self, gaussian_state: np.ndarray, poisson_state: np.ndarray
+    ) -> Dict[str, float]:
         """Verify the dual kernel energy identity.
 
         Theorem: ||∇(K_G(τ)ψ)||² = ⟨ψ, √(-Δ) K_P(s)ψ⟩
@@ -489,9 +506,9 @@ class DualKernelEngine:
             balance_ratio = 0.5
 
         return {
-            'gaussian_energy': float(gaussian_energy),
-            'poisson_energy': float(poisson_energy),
-            'total_energy': float(total_energy),
-            'balance_ratio': float(balance_ratio),
-            'duality_error': abs(balance_ratio - 0.5)
+            "gaussian_energy": float(gaussian_energy),
+            "poisson_energy": float(poisson_energy),
+            "total_energy": float(total_energy),
+            "balance_ratio": float(balance_ratio),
+            "duality_error": abs(balance_ratio - 0.5),
         }

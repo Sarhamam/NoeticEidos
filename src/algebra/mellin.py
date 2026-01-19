@@ -1,10 +1,16 @@
 """Mellin transform and coupling between additive/multiplicative transports."""
 
+from typing import Any, Dict, Tuple
+
 import numpy as np
-from typing import Tuple, Optional, Dict, Any
+
+# Handle numpy 2.x deprecation of trapz -> trapezoid
+_trapz = getattr(np, "trapezoid", None) or np.trapz
 
 
-def mellin_transform_discrete(f_vals: np.ndarray, y_grid: np.ndarray, s: complex) -> complex:
+def mellin_transform_discrete(
+    f_vals: np.ndarray, y_grid: np.ndarray, s: complex
+) -> complex:
     """Discrete approximation of Mellin transform.
 
     Parameters
@@ -34,16 +40,17 @@ def mellin_transform_discrete(f_vals: np.ndarray, y_grid: np.ndarray, s: complex
     dy = np.append(dy, dy[-1])  # Extend for last point
 
     # Integrand: y^(s-1) * f(y)
-    integrand = y_grid**(s - 1) * f_vals
+    integrand = y_grid ** (s - 1) * f_vals
 
     # Numerical integration
-    M_s = np.trapz(integrand, y_grid)
+    M_s = _trapz(integrand, y_grid)
 
     return M_s
 
 
-def mellin_unitarity_test(f_vals: np.ndarray, g_vals: np.ndarray,
-                         y_grid: np.ndarray, s: float = 0.5) -> Dict[str, Any]:
+def mellin_unitarity_test(
+    f_vals: np.ndarray, g_vals: np.ndarray, y_grid: np.ndarray, s: float = 0.5
+) -> Dict[str, Any]:
     """Test Mellin unitarity at critical line Re(s) = 1/2.
 
     Parameters
@@ -77,22 +84,23 @@ def mellin_unitarity_test(f_vals: np.ndarray, g_vals: np.ndarray,
 
     # L² inner product with Haar measure
     haar_weights = 1.0 / y_grid
-    inner_l2_haar = np.trapz(f_vals * g_vals * haar_weights, y_grid)
+    inner_l2_haar = _trapz(f_vals * g_vals * haar_weights, y_grid)
 
     # Standard L² inner product
-    inner_l2 = np.trapz(f_vals * g_vals, y_grid)
+    inner_l2 = _trapz(f_vals * g_vals, y_grid)
 
     return {
-        'inner_mellin': inner_mellin,
-        'inner_l2_haar': inner_l2_haar,
-        'inner_l2': inner_l2,
-        'ratio_haar': inner_mellin / (inner_l2_haar + 1e-10),
-        's': s
+        "inner_mellin": inner_mellin,
+        "inner_l2_haar": inner_l2_haar,
+        "inner_l2": inner_l2,
+        "ratio_haar": inner_mellin / (inner_l2_haar + 1e-10),
+        "s": s,
     }
 
 
-def mellin_balance_score(X_add: np.ndarray, X_mult: np.ndarray,
-                        s_values: np.ndarray = None) -> Tuple[np.ndarray, float]:
+def mellin_balance_score(
+    X_add: np.ndarray, X_mult: np.ndarray, s_values: np.ndarray = None
+) -> Tuple[np.ndarray, float]:
     """Compute balance score between additive and multiplicative transports.
 
     Parameters
@@ -123,7 +131,7 @@ def mellin_balance_score(X_add: np.ndarray, X_mult: np.ndarray,
 
     for s in s_values:
         # Weight features by y^(s-1/2) to test balance
-        weight = np.abs(X_mult)**(s - 0.5)
+        weight = np.abs(X_mult) ** (s - 0.5)
         weight = weight / (np.mean(weight) + 1e-10)  # Normalize
 
         # Correlation between weighted features
@@ -159,17 +167,17 @@ def analytical_mellin_pairs() -> Dict[str, Tuple]:
     These analytical results validate numerical implementations.
     """
     pairs = {
-        'exponential': (
+        "exponential": (
             lambda y: np.exp(-y),
-            lambda s: np.math.gamma(s.real) if s.real > 0 else np.inf
+            lambda s: np.math.gamma(s.real) if s.real > 0 else np.inf,
         ),
-        'power': (
-            lambda y, a: y**a / (1 + y)**(a + 1),
-            lambda s, a: np.pi / np.sin(np.pi * s) if 0 < s.real < a + 1 else np.inf
+        "power": (
+            lambda y, a: y**a / (1 + y) ** (a + 1),
+            lambda s, a: np.pi / np.sin(np.pi * s) if 0 < s.real < a + 1 else np.inf,
         ),
-        'gaussian': (
-            lambda y: np.exp(-y**2),
-            lambda s: 0.5 * np.math.gamma(s.real / 2) if s.real > 0 else np.inf
-        )
+        "gaussian": (
+            lambda y: np.exp(-(y**2)),
+            lambda s: 0.5 * np.math.gamma(s.real / 2) if s.real > 0 else np.inf,
+        ),
     }
     return pairs

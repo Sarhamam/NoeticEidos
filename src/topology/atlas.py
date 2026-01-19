@@ -8,23 +8,26 @@ Implements a unified framework for various 2D quotient topologies:
 Each topology is defined by its fundamental domain and identification maps.
 """
 
-import numpy as np
 from abc import ABC, abstractmethod
-from typing import Tuple, Dict, Any, List, Optional, Callable
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
+import numpy as np
 
 from .coords import wrap_u
 
 
 class Orientability(Enum):
     """Topology orientability classification."""
+
     ORIENTABLE = "orientable"
     NON_ORIENTABLE = "non_orientable"
 
 
 class TopologyType(Enum):
     """Supported topology types."""
+
     CYLINDER = "cylinder"
     MOBIUS = "mobius"
     TORUS = "torus"
@@ -61,20 +64,23 @@ class QuotientSpace(ABC):
         pass
 
     @abstractmethod
-    def fundamental_domain_bounds(self) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+    def fundamental_domain_bounds(
+        self,
+    ) -> Tuple[Tuple[float, float], Tuple[float, float]]:
         """Return ((u_min, u_max), (v_min, v_max)) for fundamental domain."""
         pass
 
     @abstractmethod
-    def apply_identifications(self, u: np.ndarray, v: np.ndarray,
-                            du: np.ndarray, dv: np.ndarray) -> Tuple[np.ndarray, np.ndarray,
-                                                                   np.ndarray, np.ndarray]:
+    def apply_identifications(
+        self, u: np.ndarray, v: np.ndarray, du: np.ndarray, dv: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Apply identification maps when crossing domain boundaries."""
         pass
 
     @abstractmethod
-    def metric_compatibility_condition(self, g_fn: Callable,
-                                     q: np.ndarray, tolerance: float = 1e-8) -> bool:
+    def metric_compatibility_condition(
+        self, g_fn: Callable, q: np.ndarray, tolerance: float = 1e-8
+    ) -> bool:
         """Check metric compatibility with all identification maps."""
         pass
 
@@ -82,10 +88,13 @@ class QuotientSpace(ABC):
 @dataclass
 class Strip(QuotientSpace):
     """Base class for strip-based topologies (cylinder/Möbius)."""
-    w: float                    # Half-width of strip
-    period: float = 2 * np.pi   # Period in u-direction
 
-    def fundamental_domain_bounds(self) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+    w: float  # Half-width of strip
+    period: float = 2 * np.pi  # Period in u-direction
+
+    def fundamental_domain_bounds(
+        self,
+    ) -> Tuple[Tuple[float, float], Tuple[float, float]]:
         """Strip domain: [0, period) × [-w, w]."""
         return ((0.0, self.period), (-self.w, self.w))
 
@@ -108,13 +117,15 @@ class Cylinder(Strip):
 
     def identification_maps(self) -> List[Callable]:
         """Cylinder identifications: only u-direction wrapping."""
+
         def u_wrap(u, v):
             return wrap_u(u, self.period), v
+
         return [u_wrap]
 
-    def apply_identifications(self, u: np.ndarray, v: np.ndarray,
-                            du: np.ndarray, dv: np.ndarray) -> Tuple[np.ndarray, np.ndarray,
-                                                                   np.ndarray, np.ndarray]:
+    def apply_identifications(
+        self, u: np.ndarray, v: np.ndarray, du: np.ndarray, dv: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Handle cylinder boundary: only u-wrapping, v-clamping."""
         u = np.asarray(u, dtype=float)
         v = np.asarray(v, dtype=float)
@@ -130,8 +141,9 @@ class Cylinder(Strip):
 
         return u_new, v_new, du, dv_new
 
-    def metric_compatibility_condition(self, g_fn: Callable,
-                                     q: np.ndarray, tolerance: float = 1e-8) -> bool:
+    def metric_compatibility_condition(
+        self, g_fn: Callable, q: np.ndarray, tolerance: float = 1e-8
+    ) -> bool:
         """Cylinder metric only needs u-periodicity."""
         u, v = q[0], q[1]
         g_orig = g_fn(q)
@@ -170,14 +182,16 @@ class MobiusBand(Strip):
 
     def identification_maps(self) -> List[Callable]:
         """Möbius identification: deck map T(u,v) = (u+π,-v) mod period."""
+
         def mobius_deck_map(u, v):
             # Shift by π (half period) and reflect v
             return wrap_u(u + np.pi, self.period), -v
+
         return [mobius_deck_map]
 
-    def apply_identifications(self, u: np.ndarray, v: np.ndarray,
-                            du: np.ndarray, dv: np.ndarray) -> Tuple[np.ndarray, np.ndarray,
-                                                                   np.ndarray, np.ndarray]:
+    def apply_identifications(
+        self, u: np.ndarray, v: np.ndarray, du: np.ndarray, dv: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Handle Möbius seam: apply deck map at v = ±w."""
         u = np.asarray(u, dtype=float)
         v = np.asarray(v, dtype=float)
@@ -202,8 +216,9 @@ class MobiusBand(Strip):
 
         return u, v, du, dv
 
-    def metric_compatibility_condition(self, g_fn: Callable,
-                                     q: np.ndarray, tolerance: float = 1e-8) -> bool:
+    def metric_compatibility_condition(
+        self, g_fn: Callable, q: np.ndarray, tolerance: float = 1e-8
+    ) -> bool:
         """Möbius metric must satisfy g(u+π,-v) = dT^T g(u,v) dT."""
         u, v = q[0], q[1]
         g_orig = g_fn(q)
@@ -225,10 +240,13 @@ class MobiusBand(Strip):
 @dataclass
 class Rectangle(QuotientSpace):
     """Base class for rectangular fundamental domains (torus/Klein)."""
-    width: float                # Width in u-direction
-    height: float               # Height in v-direction
 
-    def fundamental_domain_bounds(self) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+    width: float  # Width in u-direction
+    height: float  # Height in v-direction
+
+    def fundamental_domain_bounds(
+        self,
+    ) -> Tuple[Tuple[float, float], Tuple[float, float]]:
         """Rectangle domain: [0, width) × [0, height)."""
         return ((0.0, self.width), (0.0, self.height))
 
@@ -251,22 +269,26 @@ class Torus(Rectangle):
 
     def identification_maps(self) -> List[Callable]:
         """Torus identifications: wrap both u and v."""
+
         def u_wrap(u, v):
             return np.mod(u, self.width), v
+
         def v_wrap(u, v):
             return u, np.mod(v, self.height)
+
         return [u_wrap, v_wrap]
 
-    def apply_identifications(self, u: np.ndarray, v: np.ndarray,
-                            du: np.ndarray, dv: np.ndarray) -> Tuple[np.ndarray, np.ndarray,
-                                                                   np.ndarray, np.ndarray]:
+    def apply_identifications(
+        self, u: np.ndarray, v: np.ndarray, du: np.ndarray, dv: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Handle torus wrapping: both directions wrap with unchanged velocities."""
         u_new = np.mod(u, self.width)
         v_new = np.mod(v, self.height)
         return u_new, v_new, du, dv
 
-    def metric_compatibility_condition(self, g_fn: Callable,
-                                     q: np.ndarray, tolerance: float = 1e-8) -> bool:
+    def metric_compatibility_condition(
+        self, g_fn: Callable, q: np.ndarray, tolerance: float = 1e-8
+    ) -> bool:
         """Torus metric must be doubly periodic."""
         u, v = q[0], q[1]
         g_orig = g_fn(q)
@@ -310,6 +332,7 @@ class KleinBottle(Rectangle):
 
     def identification_maps(self) -> List[Callable]:
         """Klein bottle identifications: horizontal gluing and vertical Möbius twist."""
+
         def horizontal_gluing(u, v):
             # (0, v) ~ (2π, v): regular cylindrical gluing
             return np.mod(u, self.width), v
@@ -321,9 +344,9 @@ class KleinBottle(Rectangle):
 
         return [horizontal_gluing, vertical_mobius_twist]
 
-    def apply_identifications(self, u: np.ndarray, v: np.ndarray,
-                            du: np.ndarray, dv: np.ndarray) -> Tuple[np.ndarray, np.ndarray,
-                                                                   np.ndarray, np.ndarray]:
+    def apply_identifications(
+        self, u: np.ndarray, v: np.ndarray, du: np.ndarray, dv: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Handle Klein bottle boundaries with correct identification maps."""
         u = np.asarray(u, dtype=float)
         v = np.asarray(v, dtype=float)
@@ -352,8 +375,9 @@ class KleinBottle(Rectangle):
 
         return u, v, du, dv
 
-    def metric_compatibility_condition(self, g_fn: Callable,
-                                     q: np.ndarray, tolerance: float = 1e-8) -> bool:
+    def metric_compatibility_condition(
+        self, g_fn: Callable, q: np.ndarray, tolerance: float = 1e-8
+    ) -> bool:
         """Klein bottle metric must satisfy both horizontal periodicity and vertical twist.
 
         For Klein bottle, we need:
@@ -398,6 +422,7 @@ class Sphere(QuotientSpace):
     2. North pole degeneracy: (0, φ) ~ (0, 0) for all φ
     3. South pole degeneracy: (π, φ) ~ (π, 0) for all φ
     """
+
     radius: float = 1.0
 
     @property
@@ -412,15 +437,18 @@ class Sphere(QuotientSpace):
     def genus(self) -> int:
         return 0  # Sphere has genus 0
 
-    def fundamental_domain_bounds(self) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+    def fundamental_domain_bounds(
+        self,
+    ) -> Tuple[Tuple[float, float], Tuple[float, float]]:
         """Sphere in spherical coordinates: θ ∈ [0,π], φ ∈ [0,2π)."""
-        return ((0.0, np.pi), (0.0, 2*np.pi))
+        return ((0.0, np.pi), (0.0, 2 * np.pi))
 
     def identification_maps(self) -> List[Callable]:
         """Sphere identifications: azimuthal periodicity and pole degeneracies."""
+
         def azimuthal_periodicity(theta, phi):
             # (θ, 0) ~ (θ, 2π)
-            return theta, np.mod(phi, 2*np.pi)
+            return theta, np.mod(phi, 2 * np.pi)
 
         def north_pole_degeneracy(theta, phi):
             # At north pole (θ=0): all φ values map to same point
@@ -436,9 +464,9 @@ class Sphere(QuotientSpace):
 
         return [azimuthal_periodicity, north_pole_degeneracy, south_pole_degeneracy]
 
-    def apply_identifications(self, theta: np.ndarray, phi: np.ndarray,
-                            dtheta: np.ndarray, dphi: np.ndarray) -> Tuple[np.ndarray, np.ndarray,
-                                                                          np.ndarray, np.ndarray]:
+    def apply_identifications(
+        self, theta: np.ndarray, phi: np.ndarray, dtheta: np.ndarray, dphi: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Handle sphere boundaries with azimuthal periodicity and pole degeneracies."""
         theta = np.asarray(theta, dtype=float)
         phi = np.asarray(phi, dtype=float)
@@ -446,7 +474,7 @@ class Sphere(QuotientSpace):
         dphi = np.asarray(dphi, dtype=float)
 
         # Azimuthal periodicity
-        phi = np.mod(phi, 2*np.pi)
+        phi = np.mod(phi, 2 * np.pi)
 
         # Handle poles: at poles, φ is undefined, so set to 0
         at_north_pole = np.abs(theta) < 1e-10
@@ -465,8 +493,9 @@ class Sphere(QuotientSpace):
 
         return theta, phi, dtheta, dphi
 
-    def metric_compatibility_condition(self, g_fn: Callable,
-                                     q: np.ndarray, tolerance: float = 1e-8) -> bool:
+    def metric_compatibility_condition(
+        self, g_fn: Callable, q: np.ndarray, tolerance: float = 1e-8
+    ) -> bool:
         """Sphere metric must satisfy azimuthal periodicity and be regular at poles.
 
         For S² with spherical coordinates:
@@ -478,7 +507,7 @@ class Sphere(QuotientSpace):
 
         # Check azimuthal periodicity (except at poles)
         if np.abs(theta) > 1e-10 and np.abs(theta - np.pi) > 1e-10:
-            q_phi_shifted = np.array([theta, np.mod(phi + 2*np.pi, 2*np.pi)])
+            q_phi_shifted = np.array([theta, np.mod(phi + 2 * np.pi, 2 * np.pi)])
             g_phi_shifted = g_fn(q_phi_shifted)
             error_phi = np.max(np.abs(g_phi_shifted - g_orig))
         else:
@@ -510,25 +539,28 @@ class ProjectivePlane(QuotientSpace):
     def genus(self) -> int:
         return 0  # Genus undefined for non-orientable; crosscap number = 1
 
-    def fundamental_domain_bounds(self) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+    def fundamental_domain_bounds(
+        self,
+    ) -> Tuple[Tuple[float, float], Tuple[float, float]]:
         """Projective plane as hemisphere: θ ∈ [0, π/2], φ ∈ [0, 2π)."""
-        return ((0.0, np.pi/2), (0.0, 2*np.pi))
+        return ((0.0, np.pi / 2), (0.0, 2 * np.pi))
 
     def identification_maps(self) -> List[Callable]:
         """Projective plane: antipodal identification on equator."""
+
         def antipodal_on_equator(theta, phi):
             # At equator (θ = π/2): (π/2, φ) ~ (π/2, φ+π)
-            return np.pi/2, np.mod(phi + np.pi, 2*np.pi)
+            return np.pi / 2, np.mod(phi + np.pi, 2 * np.pi)
 
         def azimuthal_periodicity(theta, phi):
             # Standard φ periodicity: (θ, 0) ~ (θ, 2π)
-            return theta, np.mod(phi, 2*np.pi)
+            return theta, np.mod(phi, 2 * np.pi)
 
         return [antipodal_on_equator, azimuthal_periodicity]
 
-    def apply_identifications(self, theta: np.ndarray, phi: np.ndarray,
-                            dtheta: np.ndarray, dphi: np.ndarray) -> Tuple[np.ndarray, np.ndarray,
-                                                                          np.ndarray, np.ndarray]:
+    def apply_identifications(
+        self, theta: np.ndarray, phi: np.ndarray, dtheta: np.ndarray, dphi: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Handle projective plane boundaries with antipodal identification.
 
         Uses spherical coordinates: θ (colatitude), φ (azimuth).
@@ -539,23 +571,24 @@ class ProjectivePlane(QuotientSpace):
         dphi = np.asarray(dphi, dtype=float)
 
         # Handle azimuthal periodicity: φ ∈ [0, 2π)
-        phi = np.mod(phi, 2*np.pi)
+        phi = np.mod(phi, 2 * np.pi)
 
         # Handle equatorial antipodal identification
         # When θ > π/2, reflect through antipodal point
-        beyond_equator = theta > np.pi/2
+        beyond_equator = theta > np.pi / 2
 
         if np.any(beyond_equator):
             # Antipodal map: (θ, φ) → (π-θ, φ+π)
             theta[beyond_equator] = np.pi - theta[beyond_equator]
-            phi[beyond_equator] = np.mod(phi[beyond_equator] + np.pi, 2*np.pi)
+            phi[beyond_equator] = np.mod(phi[beyond_equator] + np.pi, 2 * np.pi)
             dtheta[beyond_equator] = -dtheta[beyond_equator]  # θ-velocity reflected
             # dphi stays the same due to the symmetry of the identification
 
         return theta, phi, dtheta, dphi
 
-    def metric_compatibility_condition(self, g_fn: Callable,
-                                     q: np.ndarray, tolerance: float = 1e-8) -> bool:
+    def metric_compatibility_condition(
+        self, g_fn: Callable, q: np.ndarray, tolerance: float = 1e-8
+    ) -> bool:
         """Projective plane metric must satisfy antipodal compatibility.
 
         For ℝP² with spherical coordinates:
@@ -566,14 +599,14 @@ class ProjectivePlane(QuotientSpace):
         g_orig = g_fn(q)
 
         # Check azimuthal periodicity
-        q_phi_shifted = np.array([theta, np.mod(phi + 2*np.pi, 2*np.pi)])
+        q_phi_shifted = np.array([theta, np.mod(phi + 2 * np.pi, 2 * np.pi)])
         g_phi_shifted = g_fn(q_phi_shifted)
         error_phi = np.max(np.abs(g_phi_shifted - g_orig))
 
         # Check antipodal compatibility at equator
-        if np.abs(theta - np.pi/2) < 0.1:  # Near equator
+        if np.abs(theta - np.pi / 2) < 0.1:  # Near equator
             # Antipodal point on equator
-            q_antipodal = np.array([np.pi/2, np.mod(phi + np.pi, 2*np.pi)])
+            q_antipodal = np.array([np.pi / 2, np.mod(phi + np.pi, 2 * np.pi)])
             g_antipodal = g_fn(q_antipodal)
 
             # For the projective plane antipodal map at equator
@@ -605,7 +638,9 @@ class TopologyAtlas:
 
         # Sphere-based topologies
         self._topologies[TopologyType.SPHERE] = lambda **kwargs: Sphere(**kwargs)
-        self._topologies[TopologyType.PROJECTIVE] = lambda **kwargs: ProjectivePlane(**kwargs)
+        self._topologies[TopologyType.PROJECTIVE] = lambda **kwargs: ProjectivePlane(
+            **kwargs
+        )
 
     def create_topology(self, topology_type: TopologyType, **kwargs) -> QuotientSpace:
         """Create topology of specified type with parameters."""
@@ -623,7 +658,7 @@ class TopologyAtlas:
         return [
             (TopologyType.CYLINDER, TopologyType.MOBIUS),
             (TopologyType.TORUS, TopologyType.KLEIN),
-            (TopologyType.SPHERE, TopologyType.PROJECTIVE)
+            (TopologyType.SPHERE, TopologyType.PROJECTIVE),
         ]
 
     def topology_comparison_matrix(self) -> Dict[str, Dict[TopologyType, Any]]:
@@ -635,7 +670,9 @@ class TopologyAtlas:
             if topo_type in [TopologyType.CYLINDER, TopologyType.MOBIUS]:
                 topo = self.create_topology(topo_type, w=1.0)
             elif topo_type in [TopologyType.TORUS, TopologyType.KLEIN]:
-                topo = self.create_topology(topo_type, width=2*np.pi, height=2*np.pi)
+                topo = self.create_topology(
+                    topo_type, width=2 * np.pi, height=2 * np.pi
+                )
             elif topo_type in [TopologyType.PROJECTIVE]:
                 topo = self.create_topology(topo_type)
             else:  # Sphere/Projective
@@ -646,7 +683,7 @@ class TopologyAtlas:
                 "euler_char": topo.euler_characteristic,
                 "genus": topo.genus,
                 "fundamental_domain": topo.fundamental_domain_bounds(),
-                "num_identifications": len(topo.identification_maps())
+                "num_identifications": len(topo.identification_maps()),
             }
 
         return matrix
@@ -668,7 +705,7 @@ class TopologyAtlas:
             "declared_orientability": topology.orientability.value,
             "identification_maps": [],
             "has_orientation_reversing": False,
-            "is_orientable": True
+            "is_orientable": True,
         }
 
         # Test points for evaluating identification maps
@@ -696,7 +733,7 @@ class TopologyAtlas:
             map_info = {
                 "map_index": i,
                 "jacobian_det": float(det_jacobian),
-                "preserves_orientation": det_jacobian > 0
+                "preserves_orientation": det_jacobian > 0,
             }
             results["identification_maps"].append(map_info)
 
@@ -706,15 +743,21 @@ class TopologyAtlas:
 
         # Verify consistency with declared orientability
         results["consistent"] = (
-            (results["is_orientable"] and topology.orientability == Orientability.ORIENTABLE) or
-            (not results["is_orientable"] and topology.orientability == Orientability.NON_ORIENTABLE)
+            results["is_orientable"]
+            and topology.orientability == Orientability.ORIENTABLE
+        ) or (
+            not results["is_orientable"]
+            and topology.orientability == Orientability.NON_ORIENTABLE
         )
 
         return results
 
-    def validate_metric_on_topology(self, metric_fn: Callable,
-                                   topology: QuotientSpace,
-                                   test_points: Optional[np.ndarray] = None) -> Dict[str, Any]:
+    def validate_metric_on_topology(
+        self,
+        metric_fn: Callable,
+        topology: QuotientSpace,
+        test_points: Optional[np.ndarray] = None,
+    ) -> Dict[str, Any]:
         """Validate metric compatibility across a topology."""
         if test_points is None:
             # Generate default test points in fundamental domain
@@ -730,12 +773,14 @@ class TopologyAtlas:
             "n_test_points": len(test_points),
             "compatible_points": 0,
             "incompatible_points": 0,
-            "errors": []
+            "errors": [],
         }
 
         for point in test_points:
             try:
-                is_compatible = topology.metric_compatibility_condition(metric_fn, point)
+                is_compatible = topology.metric_compatibility_condition(
+                    metric_fn, point
+                )
                 if is_compatible:
                     results["compatible_points"] += 1
                 else:
@@ -744,7 +789,9 @@ class TopologyAtlas:
                 results["errors"].append(f"Point {point}: {e}")
 
         results["compatibility_rate"] = results["compatible_points"] / len(test_points)
-        results["valid"] = results["incompatible_points"] == 0 and len(results["errors"]) == 0
+        results["valid"] = (
+            results["incompatible_points"] == 0 and len(results["errors"]) == 0
+        )
 
         return results
 
@@ -763,21 +810,27 @@ def get_orientability_pairs() -> List[Tuple[QuotientSpace, QuotientSpace]]:
     pairs = []
 
     # Cylinder vs Möbius
-    pairs.append((
-        create_topology(TopologyType.CYLINDER, w=1.0),
-        create_topology(TopologyType.MOBIUS, w=1.0)
-    ))
+    pairs.append(
+        (
+            create_topology(TopologyType.CYLINDER, w=1.0),
+            create_topology(TopologyType.MOBIUS, w=1.0),
+        )
+    )
 
     # Torus vs Klein bottle
-    pairs.append((
-        create_topology(TopologyType.TORUS, width=2*np.pi, height=2*np.pi),
-        create_topology(TopologyType.KLEIN, width=2*np.pi, height=2*np.pi)
-    ))
+    pairs.append(
+        (
+            create_topology(TopologyType.TORUS, width=2 * np.pi, height=2 * np.pi),
+            create_topology(TopologyType.KLEIN, width=2 * np.pi, height=2 * np.pi),
+        )
+    )
 
     # Sphere vs Projective plane
-    pairs.append((
-        create_topology(TopologyType.SPHERE, radius=1.0),
-        create_topology(TopologyType.PROJECTIVE)
-    ))
+    pairs.append(
+        (
+            create_topology(TopologyType.SPHERE, radius=1.0),
+            create_topology(TopologyType.PROJECTIVE),
+        )
+    )
 
     return pairs

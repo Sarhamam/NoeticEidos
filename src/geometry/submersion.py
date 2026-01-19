@@ -1,14 +1,15 @@
 """Submersion maps f: M → ℝ² with transversality checking."""
 
+from typing import Any, Callable, Dict, Literal, Optional, Tuple
+
 import numpy as np
-from typing import Tuple, Callable, Dict, Any, Optional, Literal
 from scipy.linalg import svd
 
 
 def build_submersion(
     X: np.ndarray,
     method: Literal["linear", "least_squares"] = "linear",
-    seed: Optional[int] = 0
+    seed: Optional[int] = 0,
 ) -> Tuple[Callable, Callable]:
     """Build submersion map f = (τ, σ): M → ℝ².
 
@@ -88,7 +89,7 @@ def check_transversal(
     X: np.ndarray,
     tol_rank: float = 1e-6,
     kappa_max: float = 1e6,
-    zero_threshold: float = 1e-3
+    zero_threshold: float = 1e-3,
 ) -> Tuple[bool, Dict[str, Any]]:
     """Check transversality condition for submersion.
 
@@ -144,7 +145,7 @@ def check_transversal(
         n_zero_points = n_candidates
 
     # Check rank and condition at near-zero points
-    min_singular = float('inf')
+    min_singular = float("inf")
     max_condition = 0.0
     rank_deficient = 0
 
@@ -164,7 +165,7 @@ def check_transversal(
                 cond = (s.max() / s.min()) ** 2
                 max_condition = max(max_condition, cond)
             else:
-                max_condition = float('inf')
+                max_condition = float("inf")
 
             # Check rank
             if s.min() < tol_rank:
@@ -172,19 +173,23 @@ def check_transversal(
 
         except np.linalg.LinAlgError:
             rank_deficient += 1
-            max_condition = float('inf')
+            max_condition = float("inf")
 
     # Determine if transversal
-    ok = (rank_deficient == 0) and (max_condition <= kappa_max) and (min_singular >= tol_rank)
+    ok = (
+        (rank_deficient == 0)
+        and (max_condition <= kappa_max)
+        and (min_singular >= tol_rank)
+    )
 
     cert = {
-        'min_singular': min_singular if min_singular != float('inf') else 0.0,
-        'max_condition': max_condition,
-        'n_zero_points': n_zero_points,
-        'rank_deficient': rank_deficient,
-        'total_checked': np.sum(near_zero),
-        'tol_rank': tol_rank,
-        'kappa_max': kappa_max
+        "min_singular": min_singular if min_singular != float("inf") else 0.0,
+        "max_condition": max_condition,
+        "n_zero_points": n_zero_points,
+        "rank_deficient": rank_deficient,
+        "total_checked": np.sum(near_zero),
+        "tol_rank": tol_rank,
+        "kappa_max": kappa_max,
     }
 
     return ok, cert
@@ -195,7 +200,7 @@ def find_zero_set(
     X: np.ndarray,
     method: str = "newton",
     max_iter: int = 50,
-    tol: float = 1e-8
+    tol: float = 1e-8,
 ) -> np.ndarray:
     """Find points on zero set Z = {x : f(x) = 0}.
 
@@ -226,7 +231,7 @@ def find_zero_set(
 
     Z_points = []
 
-    for i, x0 in enumerate(X):
+    for _i, x0 in enumerate(X):
         try:
             if method == "newton":
                 # Use fsolve (hybrid Newton method)

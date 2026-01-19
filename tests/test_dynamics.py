@@ -1,23 +1,28 @@
 """Tests for dynamics modules."""
 
+import sys
+
 import numpy as np
 import pytest
-from scipy.sparse import diags, csr_matrix
-import sys
-sys.path.insert(0, 'src')
+from scipy.sparse import csr_matrix, diags
 
-from dynamics.projected import (
-    projected_velocity, check_tangency, constraint_force,
-    tangent_space_basis, projected_gradient_step
-)
+sys.path.insert(0, "src")
+
+from dynamics.cg_dynamics import constrained_gradient_descent, inner_cg_dynamics
 from dynamics.diffusion import (
-    simulate_diffusion, simulate_poisson, heat_kernel_signature
-)
-from dynamics.cg_dynamics import (
-    inner_cg_dynamics, constrained_gradient_descent
+    heat_kernel_signature,
+    simulate_diffusion,
+    simulate_poisson,
 )
 from dynamics.fr_flows import (
-    fr_gradient_flow, multinomial_nll_flow, natural_gradient_descent
+    multinomial_nll_flow,
+    natural_gradient_descent,
+)
+from dynamics.projected import (
+    check_tangency,
+    constraint_force,
+    projected_velocity,
+    tangent_space_basis,
 )
 from geometry.submersion import build_submersion
 
@@ -27,7 +32,7 @@ def path_graph_laplacian(n):
     # Tridiagonal: [-1, 2, -1] pattern
     main_diag = np.ones(n) * 2
     main_diag[0] = main_diag[-1] = 1  # Boundary conditions
-    off_diag = -np.ones(n-1)
+    off_diag = -np.ones(n - 1)
 
     L = diags([off_diag, main_diag, off_diag], [-1, 0, 1], shape=(n, n))
     return L.tocsr()
@@ -39,10 +44,7 @@ class TestProjected:
     def test_projected_velocity_orthogonality(self):
         """Test that projected velocity is orthogonal to constraint directions."""
         # Simple rank-2 Jacobian
-        J_f = np.array([
-            [1.0, 0.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0, 0.0]
-        ])
+        J_f = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]])
 
         v = np.array([1.0, 2.0, 3.0, 4.0])
         v_proj = projected_velocity(v, J_f)
@@ -128,7 +130,7 @@ class TestDiffusion:
         """Test that diffusion smooths the solution."""
         L = path_graph_laplacian(10)
         # Oscillatory initial condition
-        u0 = np.array([(-1)**i for i in range(10)], dtype=float)
+        u0 = np.array([(-1) ** i for i in range(10)], dtype=float)
 
         u_t1 = simulate_diffusion(L, u0, t=0.0)  # No diffusion
         u_t2 = simulate_diffusion(L, u0, t=0.5)  # Some diffusion
@@ -198,8 +200,7 @@ class TestCGDynamics:
         b = rng.normal(size=3)
 
         trajectory, info = inner_cg_dynamics(
-            L, b, f, jacobian, steps=5,
-            constraint_tol=1e-6, projection_method="tangent"
+            L, b, f, jacobian, steps=5, constraint_tol=1e-6, projection_method="tangent"
         )
 
         # All iterates should satisfy constraints
@@ -210,6 +211,7 @@ class TestCGDynamics:
 
     def test_constrained_gradient_descent(self):
         """Test projected gradient descent on simple quadratic."""
+
         def objective_grad(x):
             # Gradient of (1/2) ||x||^2
             return x
@@ -228,8 +230,13 @@ class TestCGDynamics:
         x0 = np.array([1.0, -1.0])
 
         trajectory, info = constrained_gradient_descent(
-            objective_grad, f, jacobian, x0,
-            steps=20, step_size=0.1, constraint_tol=1e-6
+            objective_grad,
+            f,
+            jacobian,
+            x0,
+            steps=20,
+            step_size=0.1,
+            constraint_tol=1e-6,
         )
 
         # Should move toward origin while satisfying constraint
@@ -249,9 +256,9 @@ class TestCGDynamics:
         trajectory, info = inner_cg_dynamics(L, b, f, jacobian, steps=10)
 
         # Info should contain meaningful data
-        assert hasattr(info, 'iterations')
-        assert hasattr(info, 'residual_history')
-        assert hasattr(info, 'constraint_violations')
+        assert hasattr(info, "iterations")
+        assert hasattr(info, "residual_history")
+        assert hasattr(info, "constraint_violations")
         assert info.iterations <= 10
         assert len(info.residual_history) == info.iterations + 1
 
@@ -279,11 +286,12 @@ class TestFRFlows:
         assert all(np.isfinite(x).all() for x in trajectory)
 
         # Functional values should generally decrease (not guaranteed monotonic)
-        func_values = info['functional_values']
+        func_values = info["functional_values"]
         assert len(func_values) == 10
 
     def test_natural_gradient_descent(self):
         """Test natural gradient descent with known Fisher information."""
+
         # Simple quadratic objective with known Fisher info
         def grad_func(params):
             return 2 * params  # Gradient of ||params||^2
@@ -308,7 +316,7 @@ class TestIntegration:
     def test_diffusion_on_graph_laplacian(self):
         """Test diffusion on graph constructed from data."""
         # Import graph construction
-        sys.path.insert(0, 'src')
+        sys.path.insert(0, "src")
         from graphs.knn import build_graph
         from graphs.laplacian import laplacian
 
@@ -329,7 +337,9 @@ class TestIntegration:
 
         # Basic checks
         assert np.isfinite(u_t).all()
-        assert np.isclose(np.sum(u_t), 1.0, atol=1e-3)  # Mass conservation (relaxed for graph Laplacian)
+        assert np.isclose(
+            np.sum(u_t), 1.0, atol=1e-3
+        )  # Mass conservation (relaxed for graph Laplacian)
         assert u_t[0] < 1.0  # Heat has spread from source
 
     def test_constrained_dynamics_pipeline(self):
@@ -347,8 +357,7 @@ class TestIntegration:
 
         # Run constrained CG
         trajectory, info = inner_cg_dynamics(
-            L, b, f, jacobian, steps=8,
-            projection_method="tangent", verbose=False
+            L, b, f, jacobian, steps=8, projection_method="tangent", verbose=False
         )
 
         # Verify constraint satisfaction throughout

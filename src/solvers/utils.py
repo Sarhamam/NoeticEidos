@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from typing import List, Optional
-import time
+
 import numpy as np
 
 
@@ -12,7 +12,7 @@ class CGInfo:
 
     converged: bool = False
     iterations: int = 0
-    residual_norm: float = float('inf')
+    residual_norm: float = float("inf")
     residual_history: List[float] = field(default_factory=list)
     matvecs: int = 0
     alpha: float = 0.0
@@ -24,10 +24,12 @@ class CGInfo:
 
     def __repr__(self):
         status = "converged" if self.converged else "not converged"
-        return (f"CGInfo({status}, "
-                f"iter={self.iterations}, "
-                f"res={self.residual_norm:.2e}, "
-                f"time={self.wall_time:.3f}s)")
+        return (
+            f"CGInfo({status}, "
+            f"iter={self.iterations}, "
+            f"res={self.residual_norm:.2e}, "
+            f"time={self.wall_time:.3f}s)"
+        )
 
 
 @dataclass
@@ -45,10 +47,12 @@ class LanczosInfo:
 
     def __repr__(self):
         status = "converged" if self.converged else "not converged"
-        return (f"LanczosInfo({status}, "
-                f"n_conv={self.n_converged}, "
-                f"iter={self.iterations}, "
-                f"time={self.wall_time:.3f}s)")
+        return (
+            f"LanczosInfo({status}, "
+            f"n_conv={self.n_converged}, "
+            f"iter={self.iterations}, "
+            f"time={self.wall_time:.3f}s)"
+        )
 
 
 def log_iteration(iteration: int, residual: float, verbose: bool = False):
@@ -57,10 +61,9 @@ def log_iteration(iteration: int, residual: float, verbose: bool = False):
         print(f"  CG iter {iteration:4d}: residual = {residual:.2e}")
 
 
-def check_convergence(residual_norm: float,
-                     b_norm: float,
-                     rtol: float = 1e-6,
-                     atol: float = 0.0) -> bool:
+def check_convergence(
+    residual_norm: float, b_norm: float, rtol: float = 1e-6, atol: float = 0.0
+) -> bool:
     """Check CG convergence criteria.
 
     Converged if: ||r|| <= rtol * ||b|| + atol

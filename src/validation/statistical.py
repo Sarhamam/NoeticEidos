@@ -1,19 +1,21 @@
 """Statistical rigor guards for hypothesis testing and inference."""
 
-import numpy as np
-from typing import Dict, Any, List, Optional, Union
 import warnings
+from typing import Any, Dict, Optional
+
+import numpy as np
 from scipy import stats
 
 
 class StatisticalValidityError(Exception):
     """Raised when statistical validity requirements are violated."""
+
     pass
 
 
-def validate_bootstrap_size(n_bootstrap: int,
-                          min_recommended: int = 1000,
-                          min_required: int = 100) -> Dict[str, Any]:
+def validate_bootstrap_size(
+    n_bootstrap: int, min_recommended: int = 1000, min_required: int = 100
+) -> Dict[str, Any]:
     """Validate bootstrap sample size for reliable confidence intervals.
 
     Parameters
@@ -57,7 +59,7 @@ def validate_bootstrap_size(n_bootstrap: int,
     # Estimate CI standard error
     # For percentile CIs, SE ≈ sqrt(p(1-p)/n) where p is the percentile
     ci_se_5pct = np.sqrt(0.05 * 0.95 / n_bootstrap)  # 5th percentile
-    ci_se_95pct = np.sqrt(0.05 * 0.95 / n_bootstrap)  # 95th percentile (same)
+    np.sqrt(0.05 * 0.95 / n_bootstrap)  # 95th percentile (same)
 
     report = {
         "valid": True,
@@ -65,7 +67,7 @@ def validate_bootstrap_size(n_bootstrap: int,
         "reliability_level": reliability_level,
         "min_recommended": min_recommended,
         "estimated_ci_se": float(ci_se_5pct),
-        "recommendations": []
+        "recommendations": [],
     }
 
     if n_bootstrap < min_recommended:
@@ -76,18 +78,21 @@ def validate_bootstrap_size(n_bootstrap: int,
     if reliability_level == "minimal":
         warnings.warn(
             f"Bootstrap sample size {n_bootstrap} is minimal. "
-            f"Consider increasing to ≥{min_recommended} for more reliable results."
+            f"Consider increasing to ≥{min_recommended} for more reliable results.",
+            stacklevel=2,
         )
 
     return report
 
 
-def check_separability_null(identical_samples1: np.ndarray,
-                          identical_samples2: np.ndarray,
-                          test_function: callable,
-                          alpha: float = 0.05,
-                          n_trials: int = 100,
-                          seed: Optional[int] = None) -> Dict[str, Any]:
+def check_separability_null(
+    identical_samples1: np.ndarray,
+    identical_samples2: np.ndarray,
+    test_function: callable,
+    alpha: float = 0.05,
+    n_trials: int = 100,
+    seed: Optional[int] = None,
+) -> Dict[str, Any]:
     """Validate that separability test correctly handles null case (identical distributions).
 
     Parameters
@@ -126,7 +131,7 @@ def check_separability_null(identical_samples1: np.ndarray,
         # Create two samples from same distribution
         shuffled = rng.permutation(combined_data)
         sample1 = shuffled[:n1]
-        sample2 = shuffled[n1:n1+n2]
+        sample2 = shuffled[n1 : n1 + n2]
 
         try:
             # Apply separability test
@@ -139,7 +144,7 @@ def check_separability_null(identical_samples1: np.ndarray,
                 false_positive_count += 1
 
         except Exception as e:
-            warnings.warn(f"Test failed on trial {trial}: {e}")
+            warnings.warn(f"Test failed on trial {trial}: {e}", stacklevel=2)
             continue
 
     if len(p_values) == 0:
@@ -159,7 +164,7 @@ def check_separability_null(identical_samples1: np.ndarray,
         binom_p = stats.binom_test(false_positive_count, len(p_values), alpha)
 
     # Check p-value distribution uniformity (should be uniform under null)
-    ks_stat, ks_p = stats.kstest(p_values, 'uniform')
+    ks_stat, ks_p = stats.kstest(p_values, "uniform")
 
     report = {
         "valid_null_behavior": observed_type1_rate <= 2 * alpha and binom_p > 0.01,
@@ -173,8 +178,8 @@ def check_separability_null(identical_samples1: np.ndarray,
         "p_value_distribution": {
             "min": float(np.min(p_values)),
             "max": float(np.max(p_values)),
-            "median": float(np.median(p_values))
-        }
+            "median": float(np.median(p_values)),
+        },
     }
 
     # Raise error if test is miscalibrated
@@ -187,15 +192,16 @@ def check_separability_null(identical_samples1: np.ndarray,
     if binom_p < 0.01:
         warnings.warn(
             f"Type I error rate significantly different from nominal level "
-            f"(p={binom_p:.4f}). Test calibration may be poor."
+            f"(p={binom_p:.4f}). Test calibration may be poor.",
+            stacklevel=2,
         )
 
     return report
 
 
-def apply_multiple_testing_correction(p_values: np.ndarray,
-                                    method: str = "holm",
-                                    alpha: float = 0.05) -> Dict[str, Any]:
+def apply_multiple_testing_correction(
+    p_values: np.ndarray, method: str = "holm", alpha: float = 0.05
+) -> Dict[str, Any]:
     """Apply multiple testing correction and validate results.
 
     Parameters
@@ -223,7 +229,7 @@ def apply_multiple_testing_correction(p_values: np.ndarray,
             "method": "none",
             "n_tests": 1,
             "n_significant_raw": int(np.sum(p_values < alpha)),
-            "n_significant_corrected": int(np.sum(p_values < alpha))
+            "n_significant_corrected": int(np.sum(p_values < alpha)),
         }
 
     # Apply correction
@@ -241,7 +247,7 @@ def apply_multiple_testing_correction(p_values: np.ndarray,
 
         # Ensure monotonicity
         for i in range(1, n_tests):
-            corrected_sorted[i] = max(corrected_sorted[i], corrected_sorted[i-1])
+            corrected_sorted[i] = max(corrected_sorted[i], corrected_sorted[i - 1])
 
         # Restore original order
         corrected_p = np.zeros_like(p_values)
@@ -273,10 +279,12 @@ def apply_multiple_testing_correction(p_values: np.ndarray,
 
     # Validation checks
     if np.any(corrected_p < p_values - 1e-10):  # Allow small numerical errors
-        warnings.warn("Corrected p-values smaller than raw p-values detected")
+        warnings.warn(
+            "Corrected p-values smaller than raw p-values detected", stacklevel=2
+        )
 
     if np.any(corrected_p > 1.0 + 1e-10):
-        warnings.warn("Corrected p-values > 1.0 detected")
+        warnings.warn("Corrected p-values > 1.0 detected", stacklevel=2)
 
     return {
         "corrected_p_values": corrected_p,
@@ -287,15 +295,19 @@ def apply_multiple_testing_correction(p_values: np.ndarray,
         "n_significant_raw": int(np.sum(significant_raw)),
         "n_significant_corrected": int(np.sum(significant_corrected)),
         "raw_p_values": p_values.copy(),
-        "correction_severity": float(np.mean(corrected_p / np.maximum(p_values, 1e-10)))
+        "correction_severity": float(
+            np.mean(corrected_p / np.maximum(p_values, 1e-10))
+        ),
     }
 
 
-def validate_sample_size_adequacy(sample1: np.ndarray,
-                                sample2: np.ndarray,
-                                effect_size: float,
-                                alpha: float = 0.05,
-                                power: float = 0.8) -> Dict[str, Any]:
+def validate_sample_size_adequacy(
+    sample1: np.ndarray,
+    sample2: np.ndarray,
+    effect_size: float,
+    alpha: float = 0.05,
+    power: float = 0.8,
+) -> Dict[str, Any]:
     """Validate that sample sizes are adequate for detecting given effect size.
 
     Parameters
@@ -319,28 +331,33 @@ def validate_sample_size_adequacy(sample1: np.ndarray,
 
     # Estimate required sample size for two-sample t-test
     # Using approximate formula: n ≈ 2(z_α/2 + z_β)² / δ²
-    z_alpha = stats.norm.ppf(1 - alpha/2)
+    z_alpha = stats.norm.ppf(1 - alpha / 2)
     z_beta = stats.norm.ppf(power)
 
     if effect_size > 0:
-        n_required_per_group = 2 * (z_alpha + z_beta)**2 / (effect_size**2)
+        n_required_per_group = 2 * (z_alpha + z_beta) ** 2 / (effect_size**2)
         n_required_total = 2 * n_required_per_group
     else:
-        n_required_per_group = float('inf')
-        n_required_total = float('inf')
+        n_required_per_group = float("inf")
+        n_required_total = float("inf")
 
     # Current power estimate
     if effect_size > 0 and n_harmonic > 0:
         ncp = effect_size * np.sqrt(n_harmonic / 2)  # Non-centrality parameter
-        current_power = 1 - stats.t.cdf(z_alpha, n1 + n2 - 2, ncp) + \
-                       stats.t.cdf(-z_alpha, n1 + n2 - 2, ncp)
+        current_power = (
+            1
+            - stats.t.cdf(z_alpha, n1 + n2 - 2, ncp)
+            + stats.t.cdf(-z_alpha, n1 + n2 - 2, ncp)
+        )
         current_power = max(0.0, min(1.0, current_power))
     else:
         current_power = 0.0
 
-    adequate = (n1 >= n_required_per_group * 0.8 and
-               n2 >= n_required_per_group * 0.8 and
-               current_power >= power * 0.9)
+    adequate = (
+        n1 >= n_required_per_group * 0.8
+        and n2 >= n_required_per_group * 0.8
+        and current_power >= power * 0.9
+    )
 
     return {
         "adequate": adequate,
@@ -352,15 +369,17 @@ def validate_sample_size_adequacy(sample1: np.ndarray,
         "required_total": float(n_required_total),
         "current_power": float(current_power),
         "target_power": power,
-        "recommendations": [
-            f"Increase sample sizes to ≥{n_required_per_group:.0f} per group"
-        ] if not adequate else []
+        "recommendations": (
+            [f"Increase sample sizes to ≥{n_required_per_group:.0f} per group"]
+            if not adequate
+            else []
+        ),
     }
 
 
-def check_statistical_assumptions(sample1: np.ndarray,
-                                sample2: np.ndarray,
-                                test_type: str = "ttest") -> Dict[str, Any]:
+def check_statistical_assumptions(
+    sample1: np.ndarray, sample2: np.ndarray, test_type: str = "ttest"
+) -> Dict[str, Any]:
     """Check statistical assumptions for common tests.
 
     Parameters
@@ -386,7 +405,7 @@ def check_statistical_assumptions(sample1: np.ndarray,
             "valid": False,
             "error": "Non-finite values in samples",
             "finite_sample1": finite1,
-            "finite_sample2": finite2
+            "finite_sample2": finite2,
         }
 
     # Remove any infinite or NaN values for further analysis
@@ -398,14 +417,14 @@ def check_statistical_assumptions(sample1: np.ndarray,
             "valid": False,
             "error": "Insufficient sample sizes after cleaning",
             "n1_clean": len(s1_clean),
-            "n2_clean": len(s2_clean)
+            "n2_clean": len(s2_clean),
         }
 
     results = {
         "valid": True,
         "test_type": test_type,
         "n1": len(s1_clean),
-        "n2": len(s2_clean)
+        "n2": len(s2_clean),
     }
 
     if test_type == "ttest":
@@ -413,44 +432,58 @@ def check_statistical_assumptions(sample1: np.ndarray,
         if len(s1_clean) <= 50:
             _, norm_p1 = stats.shapiro(s1_clean)
         else:
-            norm_stat1 = stats.anderson(s1_clean, dist='norm')
-            norm_p1 = 0.01 if norm_stat1.statistic > norm_stat1.critical_values[2] else 0.1
+            norm_stat1 = stats.anderson(s1_clean, dist="norm")
+            norm_p1 = (
+                0.01 if norm_stat1.statistic > norm_stat1.critical_values[2] else 0.1
+            )
 
         if len(s2_clean) <= 50:
             _, norm_p2 = stats.shapiro(s2_clean)
         else:
-            norm_stat2 = stats.anderson(s2_clean, dist='norm')
-            norm_p2 = 0.01 if norm_stat2.statistic > norm_stat2.critical_values[2] else 0.1
+            norm_stat2 = stats.anderson(s2_clean, dist="norm")
+            norm_p2 = (
+                0.01 if norm_stat2.statistic > norm_stat2.critical_values[2] else 0.1
+            )
 
         # Check equal variances (Levene's test)
         _, equal_var_p = stats.levene(s1_clean, s2_clean)
 
-        results.update({
-            "normality_p1": float(norm_p1),
-            "normality_p2": float(norm_p2),
-            "equal_variances_p": float(equal_var_p),
-            "assumptions_met": norm_p1 > 0.05 and norm_p2 > 0.05 and equal_var_p > 0.05,
-            "recommendations": []
-        })
+        results.update(
+            {
+                "normality_p1": float(norm_p1),
+                "normality_p2": float(norm_p2),
+                "equal_variances_p": float(equal_var_p),
+                "assumptions_met": norm_p1 > 0.05
+                and norm_p2 > 0.05
+                and equal_var_p > 0.05,
+                "recommendations": [],
+            }
+        )
 
         if norm_p1 <= 0.05 or norm_p2 <= 0.05:
-            results["recommendations"].append("Consider Mann-Whitney U test (non-parametric)")
+            results["recommendations"].append(
+                "Consider Mann-Whitney U test (non-parametric)"
+            )
 
         if equal_var_p <= 0.05:
             results["recommendations"].append("Use Welch's t-test (unequal variances)")
 
     elif test_type == "mannwhitney":
         # Mann-Whitney has fewer assumptions
-        results.update({
-            "assumptions_met": True,
-            "note": "Mann-Whitney U test has minimal distributional assumptions"
-        })
+        results.update(
+            {
+                "assumptions_met": True,
+                "note": "Mann-Whitney U test has minimal distributional assumptions",
+            }
+        )
 
     elif test_type == "bootstrap":
         # Bootstrap assumptions
-        results.update({
-            "assumptions_met": True,
-            "note": "Bootstrap methods are distribution-free but require adequate sample sizes"
-        })
+        results.update(
+            {
+                "assumptions_met": True,
+                "note": "Bootstrap methods are distribution-free but require adequate sample sizes",
+            }
+        )
 
     return results

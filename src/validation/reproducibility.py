@@ -2,22 +2,24 @@
 
 import hashlib
 import json
-import numpy as np
-import time
 import platform
 import sys
+import time
 from pathlib import Path
-from typing import Dict, Any, Optional, Union, List
-import warnings
+from typing import Any, Dict, List, Optional, Union
+
+import numpy as np
 
 
 class ReproducibilityError(Exception):
     """Raised when reproducibility requirements are violated."""
+
     pass
 
 
-def ensure_reproducibility(seed: int,
-                         libraries: Optional[List[str]] = None) -> Dict[str, Any]:
+def ensure_reproducibility(
+    seed: int, libraries: Optional[List[str]] = None
+) -> Dict[str, Any]:
     """Ensure reproducible computation across relevant libraries.
 
     Parameters
@@ -61,6 +63,7 @@ def ensure_reproducibility(seed: int,
     if "random" in libraries:
         try:
             import random
+
             random.seed(seed)
             seed_status["random"] = "success"
         except Exception as e:
@@ -71,6 +74,7 @@ def ensure_reproducibility(seed: int,
     if "torch" in libraries:
         try:
             import torch
+
             torch.manual_seed(seed)
             if torch.cuda.is_available():
                 torch.cuda.manual_seed(seed)
@@ -88,7 +92,7 @@ def ensure_reproducibility(seed: int,
         "python_version": sys.version,
         "numpy_version": np.__version__,
         "timestamp": time.time(),
-        "hostname": platform.node()
+        "hostname": platform.node(),
     }
 
     report = {
@@ -96,7 +100,7 @@ def ensure_reproducibility(seed: int,
         "seed_status": seed_status,
         "failed_libraries": failed_libraries,
         "environment": environment,
-        "reproducible": len(failed_libraries) == 0
+        "reproducible": len(failed_libraries) == 0,
     }
 
     if failed_libraries:
@@ -108,8 +112,9 @@ def ensure_reproducibility(seed: int,
     return report
 
 
-def compute_data_hash(data: Union[np.ndarray, Dict[str, np.ndarray]],
-                     algorithm: str = "sha256") -> str:
+def compute_data_hash(
+    data: Union[np.ndarray, Dict[str, np.ndarray]], algorithm: str = "sha256"
+) -> str:
     """Compute cryptographic hash of data for integrity checking.
 
     Parameters
@@ -134,7 +139,7 @@ def compute_data_hash(data: Union[np.ndarray, Dict[str, np.ndarray]],
     if isinstance(data, dict):
         # Hash dictionary of arrays
         for key in sorted(data.keys()):  # Ensure deterministic order
-            hasher.update(key.encode('utf-8'))
+            hasher.update(key.encode("utf-8"))
             arr = np.asarray(data[key])
             hasher.update(arr.tobytes())
     else:
@@ -145,9 +150,11 @@ def compute_data_hash(data: Union[np.ndarray, Dict[str, np.ndarray]],
     return hasher.hexdigest()
 
 
-def log_experiment_config(config: Dict[str, Any],
-                        output_path: Optional[Union[str, Path]] = None,
-                        include_environment: bool = True) -> str:
+def log_experiment_config(
+    config: Dict[str, Any],
+    output_path: Optional[Union[str, Path]] = None,
+    include_environment: bool = True,
+) -> str:
     """Log experiment configuration for reproducibility.
 
     Parameters
@@ -175,12 +182,13 @@ def log_experiment_config(config: Dict[str, Any],
             "timestamp": time.time(),
             "hostname": platform.node(),
             "working_directory": str(Path.cwd()),
-            "command_line_args": sys.argv
+            "command_line_args": sys.argv,
         }
 
         # Add library versions
         try:
             import scipy
+
             env_info["scipy_version"] = scipy.__version__
         except ImportError:
             pass
@@ -195,15 +203,17 @@ def log_experiment_config(config: Dict[str, Any],
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             f.write(config_json)
 
     return config_json
 
 
-def validate_experiment_reproducibility(config1: Dict[str, Any],
-                                      config2: Dict[str, Any],
-                                      ignore_keys: Optional[List[str]] = None) -> Dict[str, Any]:
+def validate_experiment_reproducibility(
+    config1: Dict[str, Any],
+    config2: Dict[str, Any],
+    ignore_keys: Optional[List[str]] = None,
+) -> Dict[str, Any]:
     """Validate that two experiment configurations are equivalent for reproducibility.
 
     Parameters
@@ -219,7 +229,12 @@ def validate_experiment_reproducibility(config1: Dict[str, Any],
         Reproducibility validation results
     """
     if ignore_keys is None:
-        ignore_keys = ["timestamp", "hostname", "working_directory", "command_line_args"]
+        ignore_keys = [
+            "timestamp",
+            "hostname",
+            "working_directory",
+            "command_line_args",
+        ]
 
     # Deep copy to avoid modifying originals
     c1 = json.loads(json.dumps(config1, default=_json_numpy_serializer))
@@ -238,15 +253,15 @@ def validate_experiment_reproducibility(config1: Dict[str, Any],
         "differences": differences,
         "ignored_keys": ignore_keys,
         "config1_keys": list(c1.keys()),
-        "config2_keys": list(c2.keys())
+        "config2_keys": list(c2.keys()),
     }
 
     return report
 
 
-def create_experiment_fingerprint(data_hash: str,
-                                config_hash: str,
-                                code_version: Optional[str] = None) -> str:
+def create_experiment_fingerprint(
+    data_hash: str, config_hash: str, code_version: Optional[str] = None
+) -> str:
     """Create unique fingerprint for experiment reproducibility.
 
     Parameters
@@ -265,22 +280,24 @@ def create_experiment_fingerprint(data_hash: str,
     """
     hasher = hashlib.sha256()
 
-    hasher.update(data_hash.encode('utf-8'))
-    hasher.update(config_hash.encode('utf-8'))
+    hasher.update(data_hash.encode("utf-8"))
+    hasher.update(config_hash.encode("utf-8"))
 
     if code_version is not None:
-        hasher.update(code_version.encode('utf-8'))
+        hasher.update(code_version.encode("utf-8"))
 
     # Add timestamp truncated to hour for partial time-independence
     hour_timestamp = int(time.time() // 3600) * 3600
-    hasher.update(str(hour_timestamp).encode('utf-8'))
+    hasher.update(str(hour_timestamp).encode("utf-8"))
 
     return hasher.hexdigest()[:16]  # Short fingerprint
 
 
-def verify_data_integrity(data: Union[np.ndarray, Dict[str, np.ndarray]],
-                        expected_hash: str,
-                        algorithm: str = "sha256") -> Dict[str, Any]:
+def verify_data_integrity(
+    data: Union[np.ndarray, Dict[str, np.ndarray]],
+    expected_hash: str,
+    algorithm: str = "sha256",
+) -> Dict[str, Any]:
     """Verify data integrity against expected hash.
 
     Parameters
@@ -303,13 +320,13 @@ def verify_data_integrity(data: Union[np.ndarray, Dict[str, np.ndarray]],
         If data integrity check fails
     """
     computed_hash = compute_data_hash(data, algorithm)
-    integrity_valid = (computed_hash == expected_hash)
+    integrity_valid = computed_hash == expected_hash
 
     report = {
         "integrity_valid": integrity_valid,
         "expected_hash": expected_hash,
         "computed_hash": computed_hash,
-        "algorithm": algorithm
+        "algorithm": algorithm,
     }
 
     if not integrity_valid:
@@ -337,7 +354,8 @@ def seed_all_rngs(seed: int) -> Dict[str, Any]:
     """
     # System-level reproducibility
     import os
-    os.environ['PYTHONHASHSEED'] = str(seed)
+
+    os.environ["PYTHONHASHSEED"] = str(seed)
 
     # Core library seeding
     libraries = ["numpy", "random"]
@@ -345,6 +363,7 @@ def seed_all_rngs(seed: int) -> Dict[str, Any]:
     # Optional libraries
     try:
         import torch
+
         libraries.append("torch")
     except ImportError:
         pass
@@ -353,6 +372,7 @@ def seed_all_rngs(seed: int) -> Dict[str, Any]:
 
 
 # Helper functions
+
 
 def _json_numpy_serializer(obj):
     """JSON serializer for numpy types."""
@@ -377,9 +397,9 @@ def _remove_keys_recursive(d: Dict[str, Any], keys_to_remove: List[str]) -> None
             _remove_keys_recursive(value, keys_to_remove)
 
 
-def _find_config_differences(config1: Dict[str, Any],
-                           config2: Dict[str, Any],
-                           path: str = "") -> List[str]:
+def _find_config_differences(
+    config1: Dict[str, Any], config2: Dict[str, Any], path: str = ""
+) -> List[str]:
     """Find differences between two configuration dictionaries."""
     differences = []
 
@@ -391,9 +411,9 @@ def _find_config_differences(config1: Dict[str, Any],
             differences.append(f"Key missing in config2: {current_path}")
         elif isinstance(config1[key], dict) and isinstance(config2[key], dict):
             # Recursively check nested dictionaries
-            differences.extend(_find_config_differences(
-                config1[key], config2[key], current_path
-            ))
+            differences.extend(
+                _find_config_differences(config1[key], config2[key], current_path)
+            )
         elif config1[key] != config2[key]:
             differences.append(
                 f"Value mismatch at {current_path}: "

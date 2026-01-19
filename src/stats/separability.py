@@ -1,14 +1,20 @@
 """Separability testing for additive vs multiplicative transport modes."""
 
-import numpy as np
-from typing import Dict, Any, Optional, Union, Tuple
-from scipy import stats
 import warnings
+from typing import Any, Dict, Optional
+
+import numpy as np
+from scipy import stats
 
 
-def separability_test(phi_add: np.ndarray, phi_mult: np.ndarray,
-                     method: str = "bootstrap", trials: int = 1000,
-                     alpha: float = 0.05, seed: Optional[int] = None) -> Dict[str, Any]:
+def separability_test(
+    phi_add: np.ndarray,
+    phi_mult: np.ndarray,
+    method: str = "bootstrap",
+    trials: int = 1000,
+    alpha: float = 0.05,
+    seed: Optional[int] = None,
+) -> Dict[str, Any]:
     """Test if additive vs multiplicative statistics differ significantly.
 
     Parameters
@@ -52,9 +58,13 @@ def separability_test(phi_add: np.ndarray, phi_mult: np.ndarray,
     diff_mean = mean_add - mean_mult
 
     # Effect size (Cohen's d)
-    pooled_std = np.sqrt(((len(phi_add) - 1) * np.var(phi_add, ddof=1) +
-                         (len(phi_mult) - 1) * np.var(phi_mult, ddof=1)) /
-                         (len(phi_add) + len(phi_mult) - 2))
+    pooled_std = np.sqrt(
+        (
+            (len(phi_add) - 1) * np.var(phi_add, ddof=1)
+            + (len(phi_mult) - 1) * np.var(phi_mult, ddof=1)
+        )
+        / (len(phi_add) + len(phi_mult) - 2)
+    )
 
     if pooled_std > 1e-12:
         effect_size = abs(diff_mean) / pooled_std
@@ -64,7 +74,9 @@ def separability_test(phi_add: np.ndarray, phi_mult: np.ndarray,
     rng = np.random.default_rng(seed)
 
     if method == "bootstrap":
-        return _bootstrap_test(phi_add, phi_mult, trials, alpha, rng, diff_mean, effect_size)
+        return _bootstrap_test(
+            phi_add, phi_mult, trials, alpha, rng, diff_mean, effect_size
+        )
 
     elif method == "ttest":
         return _ttest(phi_add, phi_mult, alpha, diff_mean, effect_size)
@@ -73,15 +85,23 @@ def separability_test(phi_add: np.ndarray, phi_mult: np.ndarray,
         return _mannwhitney_test(phi_add, phi_mult, alpha, diff_mean, effect_size)
 
     elif method == "permutation":
-        return _permutation_test(phi_add, phi_mult, trials, alpha, rng, diff_mean, effect_size)
+        return _permutation_test(
+            phi_add, phi_mult, trials, alpha, rng, diff_mean, effect_size
+        )
 
     else:
         raise ValueError(f"Unknown method: {method}")
 
 
-def _bootstrap_test(phi_add: np.ndarray, phi_mult: np.ndarray, trials: int,
-                   alpha: float, rng: np.random.Generator,
-                   diff_mean: float, effect_size: float) -> Dict[str, Any]:
+def _bootstrap_test(
+    phi_add: np.ndarray,
+    phi_mult: np.ndarray,
+    trials: int,
+    alpha: float,
+    rng: np.random.Generator,
+    diff_mean: float,
+    effect_size: float,
+) -> Dict[str, Any]:
     """Bootstrap confidence interval test."""
     # Bootstrap resampling
     diffs = []
@@ -112,12 +132,17 @@ def _bootstrap_test(phi_add: np.ndarray, phi_mult: np.ndarray, trials: int,
         "effect_size": float(effect_size),
         "separable": bool(separable),
         "method": "bootstrap",
-        "statistic": float(diff_mean)
+        "statistic": float(diff_mean),
     }
 
 
-def _ttest(phi_add: np.ndarray, phi_mult: np.ndarray, alpha: float,
-          diff_mean: float, effect_size: float) -> Dict[str, Any]:
+def _ttest(
+    phi_add: np.ndarray,
+    phi_mult: np.ndarray,
+    alpha: float,
+    diff_mean: float,
+    effect_size: float,
+) -> Dict[str, Any]:
     """Two-sample t-test."""
     try:
         statistic, p_value = stats.ttest_ind(phi_add, phi_mult, equal_var=False)
@@ -128,8 +153,8 @@ def _ttest(phi_add: np.ndarray, phi_mult: np.ndarray, alpha: float,
 
         # Welch's degrees of freedom
         se_diff = np.sqrt(var1 / n1 + var2 / n2)
-        dof = (var1 / n1 + var2 / n2)**2 / (
-            (var1 / n1)**2 / (n1 - 1) + (var2 / n2)**2 / (n2 - 1)
+        dof = (var1 / n1 + var2 / n2) ** 2 / (
+            (var1 / n1) ** 2 / (n1 - 1) + (var2 / n2) ** 2 / (n2 - 1)
         )
 
         t_crit = stats.t.ppf(1 - alpha / 2, dof)
@@ -146,27 +171,32 @@ def _ttest(phi_add: np.ndarray, phi_mult: np.ndarray, alpha: float,
             "effect_size": float(effect_size),
             "separable": bool(separable),
             "method": "ttest",
-            "statistic": float(statistic)
+            "statistic": float(statistic),
         }
 
     except Exception as e:
-        warnings.warn(f"t-test failed: {e}")
+        warnings.warn(f"t-test failed: {e}", stacklevel=2)
         return {
             "p_value": 1.0,
-            "ci": (-float('inf'), float('inf')),
+            "ci": (-float("inf"), float("inf")),
             "effect_size": float(effect_size),
             "separable": False,
             "method": "ttest",
-            "statistic": 0.0
+            "statistic": 0.0,
         }
 
 
-def _mannwhitney_test(phi_add: np.ndarray, phi_mult: np.ndarray, alpha: float,
-                     diff_mean: float, effect_size: float) -> Dict[str, Any]:
+def _mannwhitney_test(
+    phi_add: np.ndarray,
+    phi_mult: np.ndarray,
+    alpha: float,
+    diff_mean: float,
+    effect_size: float,
+) -> Dict[str, Any]:
     """Mann-Whitney U test (non-parametric)."""
     try:
         statistic, p_value = stats.mannwhitneyu(
-            phi_add, phi_mult, alternative='two-sided'
+            phi_add, phi_mult, alternative="two-sided"
         )
 
         separable = p_value < alpha
@@ -174,7 +204,7 @@ def _mannwhitney_test(phi_add: np.ndarray, phi_mult: np.ndarray, alpha: float,
         # Crude CI estimate based on rank statistics
         # This is approximate - exact CI for Mann-Whitney is complex
         combined = np.concatenate([phi_add, phi_mult])
-        sorted_combined = np.sort(combined)
+        np.sort(combined)
 
         # Use difference in medians as point estimate
         median_diff = np.median(phi_add) - np.median(phi_mult)
@@ -191,24 +221,30 @@ def _mannwhitney_test(phi_add: np.ndarray, phi_mult: np.ndarray, alpha: float,
             "effect_size": float(effect_size),
             "separable": bool(separable),
             "method": "mannwhitney",
-            "statistic": float(statistic)
+            "statistic": float(statistic),
         }
 
     except Exception as e:
-        warnings.warn(f"Mann-Whitney test failed: {e}")
+        warnings.warn(f"Mann-Whitney test failed: {e}", stacklevel=2)
         return {
             "p_value": 1.0,
-            "ci": (-float('inf'), float('inf')),
+            "ci": (-float("inf"), float("inf")),
             "effect_size": float(effect_size),
             "separable": False,
             "method": "mannwhitney",
-            "statistic": 0.0
+            "statistic": 0.0,
         }
 
 
-def _permutation_test(phi_add: np.ndarray, phi_mult: np.ndarray, trials: int,
-                     alpha: float, rng: np.random.Generator,
-                     diff_mean: float, effect_size: float) -> Dict[str, Any]:
+def _permutation_test(
+    phi_add: np.ndarray,
+    phi_mult: np.ndarray,
+    trials: int,
+    alpha: float,
+    rng: np.random.Generator,
+    diff_mean: float,
+    effect_size: float,
+) -> Dict[str, Any]:
     """Permutation test."""
     # Combine samples
     combined = np.concatenate([phi_add, phi_mult])
@@ -251,15 +287,17 @@ def _permutation_test(phi_add: np.ndarray, phi_mult: np.ndarray, trials: int,
         "effect_size": float(effect_size),
         "separable": bool(separable),
         "method": "permutation",
-        "statistic": float(observed_diff)
+        "statistic": float(observed_diff),
     }
 
 
-def mode_comparison_matrix(datasets: Dict[str, np.ndarray],
-                          modes: Dict[str, str] = None,
-                          method: str = "bootstrap",
-                          alpha: float = 0.05,
-                          seed: Optional[int] = None) -> Dict[str, Dict[str, Dict[str, Any]]]:
+def mode_comparison_matrix(
+    datasets: Dict[str, np.ndarray],
+    modes: Dict[str, str] = None,
+    method: str = "bootstrap",
+    alpha: float = 0.05,
+    seed: Optional[int] = None,
+) -> Dict[str, Dict[str, Dict[str, Any]]]:
     """Compare multiple datasets across transport modes.
 
     Parameters
@@ -309,23 +347,28 @@ def mode_comparison_matrix(datasets: Dict[str, np.ndarray],
 
             try:
                 result = separability_test(
-                    datasets[name1], datasets[name2],
-                    method=method, alpha=alpha, seed=seed
+                    datasets[name1],
+                    datasets[name2],
+                    method=method,
+                    alpha=alpha,
+                    seed=seed,
                 )
                 result["cross_mode"] = is_cross_mode
                 result["modes"] = (mode1, mode2)
 
             except Exception as e:
-                warnings.warn(f"Comparison {name1} vs {name2} failed: {e}")
+                warnings.warn(
+                    f"Comparison {name1} vs {name2} failed: {e}", stacklevel=2
+                )
                 result = {
                     "p_value": 1.0,
-                    "ci": (-float('inf'), float('inf')),
+                    "ci": (-float("inf"), float("inf")),
                     "effect_size": 0.0,
                     "separable": False,
                     "method": method,
                     "statistic": 0.0,
                     "cross_mode": is_cross_mode,
-                    "modes": (mode1, mode2)
+                    "modes": (mode1, mode2),
                 }
 
             results[name1][name2] = result
@@ -356,8 +399,12 @@ def effect_size_interpretation(effect_size: float) -> str:
         return "large"
 
 
-def power_analysis(phi_add: np.ndarray, phi_mult: np.ndarray,
-                  alpha: float = 0.05, n_range: np.ndarray = None) -> Dict[str, np.ndarray]:
+def power_analysis(
+    phi_add: np.ndarray,
+    phi_mult: np.ndarray,
+    alpha: float = 0.05,
+    n_range: np.ndarray = None,
+) -> Dict[str, np.ndarray]:
     """Estimate statistical power for different sample sizes.
 
     Parameters
@@ -394,7 +441,7 @@ def power_analysis(phi_add: np.ndarray, phi_mult: np.ndarray,
     for n in n_range:
         # Two-sample t-test power calculation (approximate)
         # Standard error of difference for equal sample sizes
-        se_diff = pooled_std * np.sqrt(2 / n)
+        pooled_std * np.sqrt(2 / n)
 
         # Non-centrality parameter
         ncp = effect_size * np.sqrt(n / 2)
@@ -415,8 +462,4 @@ def power_analysis(phi_add: np.ndarray, phi_mult: np.ndarray,
 
         powers.append(max(0.0, min(1.0, power)))
 
-    return {
-        "n_values": n_range,
-        "power": np.array(powers),
-        "effect_size": effect_size
-    }
+    return {"n_values": n_range, "power": np.array(powers), "effect_size": effect_size}

@@ -1,10 +1,10 @@
 """Diffusion processes on graphs via matrix exponentials."""
 
+from typing import Literal, Optional, Union
+
 import numpy as np
 from scipy.sparse import csr_matrix, eye, issparse
-from scipy.sparse.linalg import expm_multiply, LinearOperator
-from typing import Union, Literal, Optional
-import time
+from scipy.sparse.linalg import expm_multiply
 
 from solvers.cg import cg_solve
 from solvers.lanczos import topk_eigs
@@ -18,7 +18,7 @@ def simulate_diffusion(
     alpha: float = 1e-3,
     tol: float = 1e-6,
     maxiter: int = 200,
-    k_eigs: Optional[int] = None
+    k_eigs: Optional[int] = None,
 ) -> np.ndarray:
     """Simulate diffusion u(t) = exp(-tL) u0.
 
@@ -73,7 +73,7 @@ def simulate_diffusion(
         dt = t / num_steps
 
         u_current = u0.copy()
-        I = eye(n, format='csr')
+        I = eye(n, format="csr")
 
         for _ in range(num_steps):
             # Solve (I + dt*L + alpha*I) u = u_current
@@ -81,7 +81,9 @@ def simulate_diffusion(
             u_current, info = cg_solve(A, u_current, alpha=0, rtol=tol, maxiter=maxiter)
 
             if not info.converged:
-                print(f"Warning: CG did not converge in step, residual={info.residual_norm:.2e}")
+                print(
+                    f"Warning: CG did not converge in step, residual={info.residual_norm:.2e}"
+                )
 
         u_t = u_current
 
@@ -114,7 +116,7 @@ def simulate_poisson(
     t: float,
     method: Literal["eigendecomp", "rational"] = "eigendecomp",
     tol: float = 1e-6,
-    k_eigs: Optional[int] = None
+    k_eigs: Optional[int] = None,
 ) -> np.ndarray:
     """Simulate Poisson process u(t) = exp(-t sqrt(L)) u0.
 
@@ -180,8 +182,9 @@ def simulate_poisson(
     return u_t
 
 
-def diffusion_distance(L: Union[np.ndarray, csr_matrix], t: float,
-                      method: str = "krylov") -> np.ndarray:
+def diffusion_distance(
+    L: Union[np.ndarray, csr_matrix], t: float, method: str = "krylov"
+) -> np.ndarray:
     """Compute diffusion distance matrix at time t.
 
     Parameters
@@ -204,7 +207,7 @@ def diffusion_distance(L: Union[np.ndarray, csr_matrix], t: float,
     where p_t(i,·) is the i-th row of exp(-tL).
     """
     n = L.shape[0]
-    I = eye(n, format='csr')
+    eye(n, format="csr")
 
     # Compute heat kernel matrix
     if method == "krylov":
@@ -232,9 +235,9 @@ def diffusion_distance(L: Union[np.ndarray, csr_matrix], t: float,
     return D
 
 
-def heat_kernel_signature(L: Union[np.ndarray, csr_matrix],
-                         times: np.ndarray,
-                         method: str = "eigendecomp") -> np.ndarray:
+def heat_kernel_signature(
+    L: Union[np.ndarray, csr_matrix], times: np.ndarray, method: str = "eigendecomp"
+) -> np.ndarray:
     """Compute Heat Kernel Signature (HKS) for each node.
 
     Parameters
@@ -271,10 +274,12 @@ def heat_kernel_signature(L: Union[np.ndarray, csr_matrix],
     return HKS
 
 
-def multiscale_diffusion(L: Union[np.ndarray, csr_matrix],
-                        u0: np.ndarray,
-                        times: np.ndarray,
-                        method: str = "krylov") -> np.ndarray:
+def multiscale_diffusion(
+    L: Union[np.ndarray, csr_matrix],
+    u0: np.ndarray,
+    times: np.ndarray,
+    method: str = "krylov",
+) -> np.ndarray:
     """Simulate diffusion at multiple time scales.
 
     Parameters

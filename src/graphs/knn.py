@@ -1,9 +1,10 @@
 """k-NN graph construction with dual transport modes."""
 
+from typing import Literal, Optional, Union
+
 import numpy as np
 from scipy.sparse import csr_matrix, lil_matrix
 from sklearn.neighbors import NearestNeighbors
-from typing import Union, Literal, Optional
 
 
 def build_graph(
@@ -13,7 +14,7 @@ def build_graph(
     sigma: Union[str, float] = "median",
     tau: Union[str, float] = "median",
     eps: float = 1e-6,
-    seed: Optional[int] = 0
+    seed: Optional[int] = 0,
 ) -> csr_matrix:
     """Build k-NN graph with additive or multiplicative transport.
 
@@ -61,7 +62,7 @@ def build_graph(
         Z = X.copy()
 
     # Build k-NN graph
-    nbrs = NearestNeighbors(n_neighbors=min(k+1, n), algorithm='auto')
+    nbrs = NearestNeighbors(n_neighbors=min(k + 1, n), algorithm="auto")
     nbrs.fit(Z)
     distances, indices = nbrs.kneighbors(Z)
 
@@ -89,7 +90,7 @@ def build_graph(
         bandwidth = tau_val
 
     # Compute Gaussian weights
-    weights = np.exp(-(distances ** 2) / (bandwidth ** 2))
+    weights = np.exp(-(distances**2) / (bandwidth**2))
 
     # Build sparse adjacency matrix
     A = lil_matrix((n, n))

@@ -5,14 +5,17 @@ leapfrog integration with proper seam handling. Tracks energy conservation
 and handles seam crossings via deck map transformations.
 """
 
-import numpy as np
 import warnings
-from typing import Callable, Tuple, Optional, Dict, Any, List
+from typing import Any, Callable, Dict, Tuple
+
+import numpy as np
+
 from .coords import Strip, apply_seam_if_needed
 
 
 class GeodesicIntegrationError(Exception):
     """Raised when geodesic integration encounters errors."""
+
     pass
 
 
@@ -51,7 +54,9 @@ def christoffel(g: np.ndarray, du_g: np.ndarray, dv_g: np.ndarray) -> np.ndarray
     try:
         g_inv = np.linalg.inv(g)
     except np.linalg.LinAlgError:
-        raise GeodesicIntegrationError("Metric is singular, cannot compute Christoffel symbols")
+        raise GeodesicIntegrationError(
+            "Metric is singular, cannot compute Christoffel symbols"
+        )
 
     # Gradient array: dg[l][i][j] = ∂g_ij/∂x^l
     dg = np.array([du_g, dv_g])  # shape (2, 2, 2)
@@ -71,9 +76,12 @@ def christoffel(g: np.ndarray, du_g: np.ndarray, dv_g: np.ndarray) -> np.ndarray
     return Gamma
 
 
-def geodesic_acceleration(q: np.ndarray, v: np.ndarray,
-                         g_fn: Callable[[np.ndarray], np.ndarray],
-                         grad_g_fn: Callable[[np.ndarray], Tuple[np.ndarray, np.ndarray]]) -> np.ndarray:
+def geodesic_acceleration(
+    q: np.ndarray,
+    v: np.ndarray,
+    g_fn: Callable[[np.ndarray], np.ndarray],
+    grad_g_fn: Callable[[np.ndarray], Tuple[np.ndarray, np.ndarray]],
+) -> np.ndarray:
     """Compute geodesic acceleration using Christoffel symbols.
 
     Parameters
@@ -119,10 +127,14 @@ def geodesic_acceleration(q: np.ndarray, v: np.ndarray,
     return accel
 
 
-def geodesic_leapfrog_step(q: np.ndarray, v: np.ndarray, dt: float,
-                          g_fn: Callable[[np.ndarray], np.ndarray],
-                          grad_g_fn: Callable[[np.ndarray], Tuple[np.ndarray, np.ndarray]],
-                          strip: Strip) -> Tuple[np.ndarray, np.ndarray]:
+def geodesic_leapfrog_step(
+    q: np.ndarray,
+    v: np.ndarray,
+    dt: float,
+    g_fn: Callable[[np.ndarray], np.ndarray],
+    grad_g_fn: Callable[[np.ndarray], Tuple[np.ndarray, np.ndarray]],
+    strip: Strip,
+) -> Tuple[np.ndarray, np.ndarray]:
     """Single leapfrog step for geodesic integration with seam handling.
 
     Implements symplectic leapfrog integration:
@@ -161,7 +173,9 @@ def geodesic_leapfrog_step(q: np.ndarray, v: np.ndarray, dt: float,
     q_new = q + dt * v_half
 
     # Step 3: Handle seam crossings
-    u_new, v_new_coord, du_half, dv_half = apply_seam_if_needed(q_new[0], q_new[1], v_half[0], v_half[1], strip)
+    u_new, v_new_coord, du_half, dv_half = apply_seam_if_needed(
+        q_new[0], q_new[1], v_half[0], v_half[1], strip
+    )
     q_new = np.array([u_new, v_new_coord])
     v_half = np.array([du_half, dv_half])
 
@@ -172,8 +186,9 @@ def geodesic_leapfrog_step(q: np.ndarray, v: np.ndarray, dt: float,
     return q_new, v_new
 
 
-def geodesic_energy(q: np.ndarray, v: np.ndarray,
-                   g_fn: Callable[[np.ndarray], np.ndarray]) -> float:
+def geodesic_energy(
+    q: np.ndarray, v: np.ndarray, g_fn: Callable[[np.ndarray], np.ndarray]
+) -> float:
     """Compute kinetic energy of geodesic motion.
 
     Parameters
@@ -197,12 +212,17 @@ def geodesic_energy(q: np.ndarray, v: np.ndarray,
     return 0.5 * np.dot(v, np.dot(g, v))
 
 
-def integrate_geodesic(q0: np.ndarray, v0: np.ndarray, t_final: float, dt: float,
-                      g_fn: Callable[[np.ndarray], np.ndarray],
-                      grad_g_fn: Callable[[np.ndarray], Tuple[np.ndarray, np.ndarray]],
-                      strip: Strip,
-                      energy_tolerance: float = 1e-3,
-                      save_every: int = 1) -> Tuple[np.ndarray, np.ndarray, Dict[str, Any]]:
+def integrate_geodesic(
+    q0: np.ndarray,
+    v0: np.ndarray,
+    t_final: float,
+    dt: float,
+    g_fn: Callable[[np.ndarray], np.ndarray],
+    grad_g_fn: Callable[[np.ndarray], Tuple[np.ndarray, np.ndarray]],
+    strip: Strip,
+    energy_tolerance: float = 1e-3,
+    save_every: int = 1,
+) -> Tuple[np.ndarray, np.ndarray, Dict[str, Any]]:
     """Integrate geodesic on Möbius band with energy monitoring.
 
     Parameters
@@ -294,7 +314,8 @@ def integrate_geodesic(q0: np.ndarray, v0: np.ndarray, t_final: float, dt: float
             if energy_error > energy_tolerance:
                 warnings.warn(
                     f"Energy drift {energy_error:.2e} exceeds tolerance {energy_tolerance:.2e} "
-                    f"at t={t:.3f}. Consider reducing time step."
+                    f"at t={t:.3f}. Consider reducing time step.",
+                    stacklevel=2,
                 )
 
             # Save trajectory point
@@ -333,20 +354,25 @@ def integrate_geodesic(q0: np.ndarray, v0: np.ndarray, t_final: float, dt: float
         "max_energy_error": float(max_energy_error),
         "seam_crossings": seam_crossings,
         "energy_conservation": final_energy_error <= energy_tolerance,
-        "trajectory_length": float(np.sum(np.linalg.norm(np.diff(traj_q, axis=0), axis=1))),
+        "trajectory_length": float(
+            np.sum(np.linalg.norm(np.diff(traj_q, axis=0), axis=1))
+        ),
         "time_array": traj_time,
-        "energy_array": traj_energy
+        "energy_array": traj_energy,
     }
 
     return traj_q, traj_v, info
 
 
-def adaptive_geodesic_step(q: np.ndarray, v: np.ndarray,
-                          g_fn: Callable[[np.ndarray], np.ndarray],
-                          grad_g_fn: Callable[[np.ndarray], Tuple[np.ndarray, np.ndarray]],
-                          strip: Strip,
-                          dt: float,
-                          target_error: float = 1e-6) -> Tuple[np.ndarray, np.ndarray, float, bool]:
+def adaptive_geodesic_step(
+    q: np.ndarray,
+    v: np.ndarray,
+    g_fn: Callable[[np.ndarray], np.ndarray],
+    grad_g_fn: Callable[[np.ndarray], Tuple[np.ndarray, np.ndarray]],
+    strip: Strip,
+    dt: float,
+    target_error: float = 1e-6,
+) -> Tuple[np.ndarray, np.ndarray, float, bool]:
     """Adaptive step size geodesic integration using Richardson extrapolation.
 
     Parameters
@@ -375,8 +401,8 @@ def adaptive_geodesic_step(q: np.ndarray, v: np.ndarray,
     q1, v1 = geodesic_leapfrog_step(q, v, dt, g_fn, grad_g_fn, strip)
 
     # Take two steps of size dt/2
-    q_half, v_half = geodesic_leapfrog_step(q, v, dt/2, g_fn, grad_g_fn, strip)
-    q2, v2 = geodesic_leapfrog_step(q_half, v_half, dt/2, g_fn, grad_g_fn, strip)
+    q_half, v_half = geodesic_leapfrog_step(q, v, dt / 2, g_fn, grad_g_fn, strip)
+    q2, v2 = geodesic_leapfrog_step(q_half, v_half, dt / 2, g_fn, grad_g_fn, strip)
 
     # Estimate error (Richardson extrapolation)
     error_q = np.linalg.norm(q2 - q1)
@@ -404,11 +430,14 @@ def adaptive_geodesic_step(q: np.ndarray, v: np.ndarray,
     return q_new, v_new, dt_new, accept
 
 
-def geodesic_distance(q1: np.ndarray, q2: np.ndarray,
-                     g_fn: Callable[[np.ndarray], np.ndarray],
-                     grad_g_fn: Callable[[np.ndarray], Tuple[np.ndarray, np.ndarray]],
-                     strip: Strip,
-                     n_steps: int = 100) -> float:
+def geodesic_distance(
+    q1: np.ndarray,
+    q2: np.ndarray,
+    g_fn: Callable[[np.ndarray], np.ndarray],
+    grad_g_fn: Callable[[np.ndarray], Tuple[np.ndarray, np.ndarray]],
+    strip: Strip,
+    n_steps: int = 100,
+) -> float:
     """Compute geodesic distance between two points.
 
     Parameters
@@ -441,9 +470,13 @@ def geodesic_distance(q1: np.ndarray, q2: np.ndarray,
     t_final = distance_estimate
 
     try:
-        traj_q, _, info = integrate_geodesic(q1, v0, t_final, dt, g_fn, grad_g_fn, strip)
+        traj_q, _, info = integrate_geodesic(
+            q1, v0, t_final, dt, g_fn, grad_g_fn, strip
+        )
         return info["trajectory_length"]
     except GeodesicIntegrationError:
         # Fallback to Euclidean distance
-        warnings.warn("Geodesic integration failed, using Euclidean distance")
+        warnings.warn(
+            "Geodesic integration failed, using Euclidean distance", stacklevel=2
+        )
         return distance_estimate

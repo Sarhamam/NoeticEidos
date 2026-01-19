@@ -1,25 +1,25 @@
 """Algebraic operations for dual transport modes."""
 
 from .additive import (
-    gaussian_kernel,
+    diffusion_distance,
     gaussian_affinity_matrix,
+    gaussian_kernel,
     heat_kernel,
-    diffusion_distance
-)
-from .multiplicative import (
-    log_map,
-    poisson_kernel_log,
-    haar_measure_weight,
-    multiplicative_distance,
-    poisson_affinity_matrix,
-    multiplicative_heat_kernel,
-    log_ratio_distance
 )
 from .mellin import (
+    analytical_mellin_pairs,
+    mellin_balance_score,
     mellin_transform_discrete,
     mellin_unitarity_test,
-    mellin_balance_score,
-    analytical_mellin_pairs
+)
+from .multiplicative import (
+    haar_measure_weight,
+    log_map,
+    log_ratio_distance,
+    multiplicative_distance,
+    multiplicative_heat_kernel,
+    poisson_affinity_matrix,
+    poisson_kernel_log,
 )
 
 __all__ = [

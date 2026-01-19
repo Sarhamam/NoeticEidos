@@ -1,30 +1,41 @@
 """Mathematical validity guards for geometric ML operations."""
 
-import numpy as np
-from scipy.sparse import issparse, csgraph
-from scipy.linalg import svd
-from typing import Union, Tuple, Dict, Any, Optional
+from __future__ import annotations
+
 import warnings
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
+
+import numpy as np
+from scipy.linalg import svd
+from scipy.sparse import csgraph
+
+if TYPE_CHECKING:
+    from scipy.sparse import csr_matrix
 
 
 class ValidationError(Exception):
     """Base class for validation errors."""
+
     pass
 
 
 class ConnectivityError(ValidationError):
     """Raised when graph connectivity requirements are violated."""
+
     pass
 
 
 class TransversalityError(ValidationError):
     """Raised when transversality conditions are violated."""
+
     pass
 
 
-def check_graph_connectivity(adjacency_matrix: Union[np.ndarray, 'csr_matrix'],
-                           require_connected: bool = True,
-                           return_components: bool = False) -> Union[bool, Tuple[bool, int, np.ndarray]]:
+def check_graph_connectivity(
+    adjacency_matrix: Union[np.ndarray, "csr_matrix"],
+    require_connected: bool = True,
+    return_components: bool = False,
+) -> Union[bool, Tuple[bool, int, np.ndarray]]:
     """Check graph connectivity and return component information.
 
     Parameters
@@ -64,7 +75,7 @@ def check_graph_connectivity(adjacency_matrix: Union[np.ndarray, 'csr_matrix'],
         adjacency_matrix, directed=False, return_labels=True
     )
 
-    is_connected = (n_components == 1)
+    is_connected = n_components == 1
 
     if require_connected and not is_connected:
         raise ConnectivityError(
@@ -79,10 +90,12 @@ def check_graph_connectivity(adjacency_matrix: Union[np.ndarray, 'csr_matrix'],
         return is_connected
 
 
-def validate_transversality(jacobian: np.ndarray,
-                           expected_rank: int = 2,
-                           condition_threshold: float = 1e6,
-                           min_singular_value: float = 1e-12) -> Dict[str, Any]:
+def validate_transversality(
+    jacobian: np.ndarray,
+    expected_rank: int = 2,
+    condition_threshold: float = 1e6,
+    min_singular_value: float = 1e-12,
+) -> Dict[str, Any]:
     """Validate transversality condition for constraint manifolds.
 
     Parameters
@@ -122,7 +135,9 @@ def validate_transversality(jacobian: np.ndarray,
     k, n = jacobian.shape
 
     if expected_rank > min(k, n):
-        raise ValueError(f"Expected rank {expected_rank} cannot exceed min(k,n) = {min(k, n)}")
+        raise ValueError(
+            f"Expected rank {expected_rank} cannot exceed min(k,n) = {min(k, n)}"
+        )
 
     # SVD for numerical rank assessment
     try:
@@ -141,15 +156,15 @@ def validate_transversality(jacobian: np.ndarray,
         if len(nonzero_sv) > 0:
             condition_number = np.max(nonzero_sv) / np.min(nonzero_sv)
         else:
-            condition_number = float('inf')
+            condition_number = float("inf")
     else:
-        condition_number = float('inf')
+        condition_number = float("inf")
 
     # Transversality assessment
     is_transversal = (
-        actual_rank >= expected_rank and
-        condition_number <= condition_threshold and
-        min_sv >= min_singular_value
+        actual_rank >= expected_rank
+        and condition_number <= condition_threshold
+        and min_sv >= min_singular_value
     )
 
     certificate = {
@@ -159,7 +174,7 @@ def validate_transversality(jacobian: np.ndarray,
         "condition_number": condition_number,
         "singular_values": s.copy(),
         "min_singular_value": min_sv,
-        "condition_threshold": condition_threshold
+        "condition_threshold": condition_threshold,
     }
 
     if not is_transversal:
@@ -175,9 +190,9 @@ def validate_transversality(jacobian: np.ndarray,
     return certificate
 
 
-def check_manifold_dimension_consistency(embeddings: np.ndarray,
-                                       intrinsic_dim: int,
-                                       tolerance: float = 0.1) -> Dict[str, Any]:
+def check_manifold_dimension_consistency(
+    embeddings: np.ndarray, intrinsic_dim: int, tolerance: float = 0.1
+) -> Dict[str, Any]:
     """Check consistency between embedding and intrinsic manifold dimensions.
 
     Parameters
@@ -197,7 +212,10 @@ def check_manifold_dimension_consistency(embeddings: np.ndarray,
     n, d = embeddings.shape
 
     if intrinsic_dim >= d:
-        warnings.warn(f"Intrinsic dimension {intrinsic_dim} >= embedding dimension {d}")
+        warnings.warn(
+            f"Intrinsic dimension {intrinsic_dim} >= embedding dimension {d}",
+            stacklevel=2,
+        )
 
     # Simple PCA-based dimension estimation
     # Center the data
@@ -207,11 +225,7 @@ def check_manifold_dimension_consistency(embeddings: np.ndarray,
     try:
         U, s, Vt = svd(centered, full_matrices=False)
     except np.linalg.LinAlgError:
-        return {
-            "consistent": False,
-            "estimated_dim": None,
-            "error": "SVD failed"
-        }
+        return {"consistent": False, "estimated_dim": None, "error": "SVD failed"}
 
     # Estimate intrinsic dimension via explained variance
     total_variance = np.sum(s**2)
@@ -228,15 +242,17 @@ def check_manifold_dimension_consistency(embeddings: np.ndarray,
         "estimated_dim": explained_95,
         "expected_dim": intrinsic_dim,
         "explained_variance_ratios": s**2 / total_variance,
-        "cumulative_variance": cumulative_variance
+        "cumulative_variance": cumulative_variance,
     }
 
 
-def validate_submersion_properties(f: callable,
-                                 jacobian: callable,
-                                 X: np.ndarray,
-                                 sample_size: int = 100,
-                                 seed: Optional[int] = None) -> Dict[str, Any]:
+def validate_submersion_properties(
+    f: callable,
+    jacobian: callable,
+    X: np.ndarray,
+    sample_size: int = 100,
+    seed: Optional[int] = None,
+) -> Dict[str, Any]:
     """Validate submersion properties across multiple points.
 
     Parameters
@@ -280,19 +296,18 @@ def validate_submersion_properties(f: callable,
             # Validate transversality at this point
             cert = validate_transversality(J_f, expected_rank=f_val.shape[1])
 
-            validation_results.append({
-                "point_index": sample_indices[i],
-                "f_value": f_val,
-                "is_transversal": cert["is_transversal"],
-                "rank": cert["rank"],
-                "condition_number": cert["condition_number"]
-            })
+            validation_results.append(
+                {
+                    "point_index": sample_indices[i],
+                    "f_value": f_val,
+                    "is_transversal": cert["is_transversal"],
+                    "rank": cert["rank"],
+                    "condition_number": cert["condition_number"],
+                }
+            )
 
         except (TransversalityError, ValueError) as e:
-            failed_points.append({
-                "point_index": sample_indices[i],
-                "error": str(e)
-            })
+            failed_points.append({"point_index": sample_indices[i], "error": str(e)})
 
     # Summary statistics
     n_valid = len(validation_results)
@@ -300,12 +315,17 @@ def validate_submersion_properties(f: callable,
 
     if n_valid > 0:
         n_transversal = sum(r["is_transversal"] for r in validation_results)
-        avg_condition = np.mean([r["condition_number"] for r in validation_results
-                               if np.isfinite(r["condition_number"])])
+        avg_condition = np.mean(
+            [
+                r["condition_number"]
+                for r in validation_results
+                if np.isfinite(r["condition_number"])
+            ]
+        )
         success_rate = n_transversal / n_valid
     else:
         n_transversal = 0
-        avg_condition = float('inf')
+        avg_condition = float("inf")
         success_rate = 0.0
 
     return {
@@ -316,5 +336,5 @@ def validate_submersion_properties(f: callable,
         "transversal_points": n_transversal,
         "average_condition_number": avg_condition,
         "validation_details": validation_results,
-        "failed_points": failed_points
+        "failed_points": failed_points,
     }

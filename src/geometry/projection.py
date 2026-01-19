@@ -1,8 +1,7 @@
 """Tangent space projections for constrained dynamics."""
 
 import numpy as np
-from typing import Union
-from scipy.linalg import svd, pinv
+from scipy.linalg import pinv, svd
 
 
 def project_to_tangent(J_f: np.ndarray, method: str = "svd") -> np.ndarray:
@@ -101,7 +100,7 @@ def tangent_basis(J_f: np.ndarray) -> np.ndarray:
     The tangent space has dimension d-2 (codimension 2).
     Basis vectors satisfy J_f @ basis = 0.
     """
-    d = J_f.shape[1]
+    J_f.shape[1]
 
     # SVD of J_f
     U, s, Vt = svd(J_f, full_matrices=True)
@@ -161,12 +160,12 @@ def check_projection_properties(P: np.ndarray, tol: float = 1e-10) -> dict:
     binary_evals = np.allclose(evals, np.round(evals), atol=tol)
 
     return {
-        'is_symmetric': is_symmetric,
-        'is_idempotent': is_idempotent,
-        'rank': rank,
-        'eigenvalues': evals_sorted,
-        'binary_eigenvalues': binary_evals,
-        'trace': np.trace(P)
+        "is_symmetric": is_symmetric,
+        "is_idempotent": is_idempotent,
+        "rank": rank,
+        "eigenvalues": evals_sorted,
+        "binary_eigenvalues": binary_evals,
+        "trace": np.trace(P),
     }
 
 
@@ -191,7 +190,7 @@ def project_to_manifold(
     f: callable,
     jacobian: callable,
     max_iter: int = 10,
-    tol: float = 1e-8
+    tol: float = 1e-8,
 ) -> np.ndarray:
     """Project points onto constraint manifold Z = {x : f(x) = 0}.
 
@@ -224,7 +223,7 @@ def project_to_manifold(
     for i in range(n):
         x = X_proj[i]
 
-        for iteration in range(max_iter):
+        for _iteration in range(max_iter):
             # Evaluate submersion and Jacobian
             f_val = f(x.reshape(1, -1)).flatten()
             J_val = jacobian(x.reshape(1, -1))[0]  # Shape (2, d)

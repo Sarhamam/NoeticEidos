@@ -5,21 +5,25 @@ for metrics and operators on the Möbius band quotient. The key requirement
 is that metrics must satisfy g(u+π, -v) = (dT)ᵀ g(u,v) dT where dT = diag(1,-1).
 """
 
+from typing import Any, Callable, Dict, Optional
+
 import numpy as np
-import warnings
-from typing import Callable, Tuple, Optional, Dict, Any
+
 from .coords import Strip, deck_map
 
 
 class SeamCompatibilityError(Exception):
     """Raised when seam-compatibility requirements are violated."""
+
     pass
 
 
-def seam_compatible_metric(g_fn: Callable[[np.ndarray], np.ndarray],
-                          q: np.ndarray,
-                          strip: Strip,
-                          tolerance: float = 1e-8) -> bool:
+def seam_compatible_metric(
+    g_fn: Callable[[np.ndarray], np.ndarray],
+    q: np.ndarray,
+    strip: Strip,
+    tolerance: float = 1e-8,
+) -> bool:
     """Check if metric function satisfies seam-compatibility condition.
 
     For a metric to be well-defined on the Möbius band quotient, it must satisfy:
@@ -67,8 +71,7 @@ def seam_compatible_metric(g_fn: Callable[[np.ndarray], np.ndarray],
     g_deck = g_fn(q_deck)
 
     # Deck map differential: dT = diag(1, -1)
-    dT = np.array([[1.0, 0.0],
-                   [0.0, -1.0]])
+    dT = np.array([[1.0, 0.0], [0.0, -1.0]])
 
     # Expected metric at deck point: (dT)ᵀ g(u,v) dT
     g_expected = dT.T @ g_orig @ dT
@@ -78,10 +81,12 @@ def seam_compatible_metric(g_fn: Callable[[np.ndarray], np.ndarray],
     return error <= tolerance
 
 
-def enforce_seam_compatibility(g_fn: Callable[[np.ndarray], np.ndarray],
-                              q: np.ndarray,
-                              strip: Strip,
-                              tolerance: float = 1e-8) -> None:
+def enforce_seam_compatibility(
+    g_fn: Callable[[np.ndarray], np.ndarray],
+    q: np.ndarray,
+    strip: Strip,
+    tolerance: float = 1e-8,
+) -> None:
     """Enforce seam-compatibility for metric function, raising error if violated.
 
     Parameters
@@ -119,11 +124,13 @@ def enforce_seam_compatibility(g_fn: Callable[[np.ndarray], np.ndarray],
         )
 
 
-def validate_metric_grid(g_fn: Callable[[np.ndarray], np.ndarray],
-                        strip: Strip,
-                        n_u: int = 10,
-                        n_v: int = 10,
-                        tolerance: float = 1e-8) -> Dict[str, Any]:
+def validate_metric_grid(
+    g_fn: Callable[[np.ndarray], np.ndarray],
+    strip: Strip,
+    n_u: int = 10,
+    n_v: int = 10,
+    tolerance: float = 1e-8,
+) -> Dict[str, Any]:
     """Validate seam-compatibility across a grid of points.
 
     Parameters
@@ -169,7 +176,7 @@ def validate_metric_grid(g_fn: Callable[[np.ndarray], np.ndarray],
 
             except Exception as e:
                 violations.append((u, v, f"Error: {e}"))
-                errors.append(float('inf'))
+                errors.append(float("inf"))
 
     errors = np.array(errors)
     finite_errors = errors[np.isfinite(errors)]
@@ -183,16 +190,18 @@ def validate_metric_grid(g_fn: Callable[[np.ndarray], np.ndarray],
         "mean_error": float(np.mean(finite_errors)) if len(finite_errors) > 0 else 0.0,
         "tolerance": tolerance,
         "compatible": len(violations) == 0,
-        "violation_details": violations[:10]  # First 10 violations for debugging
+        "violation_details": violations[:10],  # First 10 violations for debugging
     }
 
     return report
 
 
-def seam_compatible_operator(Aq_fn: Callable[[np.ndarray], np.ndarray],
-                           q: np.ndarray,
-                           strip: Strip,
-                           tolerance: float = 1e-8) -> bool:
+def seam_compatible_operator(
+    Aq_fn: Callable[[np.ndarray], np.ndarray],
+    q: np.ndarray,
+    strip: Strip,
+    tolerance: float = 1e-8,
+) -> bool:
     """Check if operator satisfies seam-compatibility.
 
     An operator A is seam-compatible if A(T(q)) = dT A(q) dT^T
@@ -231,8 +240,7 @@ def seam_compatible_operator(Aq_fn: Callable[[np.ndarray], np.ndarray],
     A_deck = Aq_fn(q_deck)
 
     # Deck map differential: dT = diag(1, -1)
-    dT = np.array([[1.0, 0.0],
-                   [0.0, -1.0]])
+    dT = np.array([[1.0, 0.0], [0.0, -1.0]])
 
     # Expected operator at deck point: dT A(q) dT^T
     A_expected = dT @ A_orig @ dT.T
@@ -262,8 +270,7 @@ def symmetrize_metric(g: np.ndarray) -> np.ndarray:
     return 0.5 * (g + g.T)
 
 
-def check_metric_positive_definite(g: np.ndarray,
-                                  min_eigenvalue: float = 1e-9) -> bool:
+def check_metric_positive_definite(g: np.ndarray, min_eigenvalue: float = 1e-9) -> bool:
     """Check if metric tensor is positive definite.
 
     Parameters
@@ -290,8 +297,7 @@ def check_metric_positive_definite(g: np.ndarray,
     return np.all(eigenvals >= min_eigenvalue)
 
 
-def regularize_metric(g: np.ndarray,
-                     regularization: float = 1e-6) -> np.ndarray:
+def regularize_metric(g: np.ndarray, regularization: float = 1e-6) -> np.ndarray:
     """Add regularization to ensure positive definiteness.
 
     Parameters
@@ -314,9 +320,11 @@ def regularize_metric(g: np.ndarray,
     return g_sym + regularization * np.eye(2)
 
 
-def make_seam_compatible_metric(g11_fn: Callable[[np.ndarray], float],
-                               g22_fn: Callable[[np.ndarray], float],
-                               g12_fn: Optional[Callable[[np.ndarray], float]] = None) -> Callable:
+def make_seam_compatible_metric(
+    g11_fn: Callable[[np.ndarray], float],
+    g22_fn: Callable[[np.ndarray], float],
+    g12_fn: Optional[Callable[[np.ndarray], float]] = None,
+) -> Callable:
     """Construct seam-compatible metric from component functions.
 
     Creates a metric function that automatically satisfies seam-compatibility
@@ -343,23 +351,28 @@ def make_seam_compatible_metric(g11_fn: Callable[[np.ndarray], float],
     - g₂₂(u+π, -v) = g₂₂(u, v) (even in v, periodic in u)
     - g₁₂(u+π, -v) = -g₁₂(u, v) (odd in v, periodic in u)
     """
+
     def metric_fn(q: np.ndarray) -> np.ndarray:
-        u, v = q[0], q[1]
+        _u, _v = q[0], q[1]
 
         g11 = g11_fn(q)
         g22 = g22_fn(q)
         g12 = g12_fn(q) if g12_fn is not None else 0.0
 
-        g = np.array([[g11, g12],
-                      [g12, g22]])
+        g = np.array([[g11, g12], [g12, g22]])
 
         return g
 
     return metric_fn
 
 
-def validate_component_symmetries(g11_fn: Callable, g22_fn: Callable, g12_fn: Callable,
-                                 strip: Strip, tolerance: float = 1e-8) -> Dict[str, bool]:
+def validate_component_symmetries(
+    g11_fn: Callable,
+    g22_fn: Callable,
+    g12_fn: Callable,
+    strip: Strip,
+    tolerance: float = 1e-8,
+) -> Dict[str, bool]:
     """Validate that metric components satisfy required symmetries.
 
     Parameters
@@ -377,8 +390,10 @@ def validate_component_symmetries(g11_fn: Callable, g22_fn: Callable, g12_fn: Ca
         Results of symmetry validation for each component
     """
     # Test points
-    u_test = np.array([0.0, np.pi/2, np.pi, 3*np.pi/2])
-    v_test = np.array([-0.8*strip.w, -0.5*strip.w, 0.0, 0.5*strip.w, 0.8*strip.w])
+    u_test = np.array([0.0, np.pi / 2, np.pi, 3 * np.pi / 2])
+    v_test = np.array(
+        [-0.8 * strip.w, -0.5 * strip.w, 0.0, 0.5 * strip.w, 0.8 * strip.w]
+    )
 
     results = {
         "g11_even_in_v": True,
@@ -386,7 +401,7 @@ def validate_component_symmetries(g11_fn: Callable, g22_fn: Callable, g12_fn: Ca
         "g12_odd_in_v": True,
         "g11_periodic_in_u": True,
         "g22_periodic_in_u": True,
-        "g12_periodic_in_u": True
+        "g12_periodic_in_u": True,
     }
 
     for u in u_test:

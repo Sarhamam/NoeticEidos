@@ -1,12 +1,12 @@
 """Iterative solvers for sparse linear systems and eigenproblems."""
 
 from .cg import cg_solve, effective_resistance
-from .lanczos import topk_eigs, spectral_gap, fiedler_vector
+from .lanczos import fiedler_vector, spectral_gap, topk_eigs
 from .preconditioners import (
+    DiagonalPreconditioner,
     build_preconditioner,
-    jacobi_preconditioner,
     identity_preconditioner,
-    DiagonalPreconditioner
+    jacobi_preconditioner,
 )
 from .utils import CGInfo, LanczosInfo
 

@@ -1,10 +1,13 @@
 """Additive transport operations (Gaussian kernel)."""
 
-import numpy as np
 from typing import Union
 
+import numpy as np
 
-def gaussian_kernel(dist2: Union[float, np.ndarray], sigma: float) -> Union[float, np.ndarray]:
+
+def gaussian_kernel(
+    dist2: Union[float, np.ndarray], sigma: float
+) -> Union[float, np.ndarray]:
     """Compute Gaussian kernel exp(-d²/σ²).
 
     Parameters
@@ -28,7 +31,7 @@ def gaussian_kernel(dist2: Union[float, np.ndarray], sigma: float) -> Union[floa
     if sigma <= 0:
         raise ValueError("Sigma must be positive")
 
-    return np.exp(-dist2 / (sigma ** 2))
+    return np.exp(-dist2 / (sigma**2))
 
 
 def gaussian_affinity_matrix(X: np.ndarray, sigma: float) -> np.ndarray:
@@ -51,11 +54,11 @@ def gaussian_affinity_matrix(X: np.ndarray, sigma: float) -> np.ndarray:
     This creates a DENSE matrix. For large n, use sparse k-NN
     approximation via graphs.knn.build_graph instead.
     """
-    n = X.shape[0]
+    X.shape[0]
 
     # Compute pairwise squared distances
     # ||x_i - x_j||² = ||x_i||² + ||x_j||² - 2⟨x_i, x_j⟩
-    X_norm2 = np.sum(X ** 2, axis=1, keepdims=True)
+    X_norm2 = np.sum(X**2, axis=1, keepdims=True)
     dist2 = X_norm2 + X_norm2.T - 2 * X @ X.T
 
     # Ensure non-negative (numerical issues can make it slightly negative)
@@ -103,7 +106,8 @@ def heat_kernel(L: np.ndarray, t: float, k: int = 50) -> np.ndarray:
     else:
         # Use only k smallest eigenvalues
         from scipy.sparse.linalg import eigsh
-        evals, evecs = eigsh(L, k=k, which='SM')
+
+        evals, evecs = eigsh(L, k=k, which="SM")
 
     # Heat kernel: H_t = V exp(-t Λ) V^T
     H_t = evecs @ np.diag(np.exp(-t * evals)) @ evecs.T
@@ -129,7 +133,7 @@ def diffusion_distance(H_t: np.ndarray) -> np.ndarray:
     Diffusion distance: D²_t(i,j) = ||p_t(i,·) - p_t(j,·)||²
     where p_t is the transition probability.
     """
-    n = H_t.shape[0]
+    H_t.shape[0]
 
     # Normalize rows to get transition probabilities
     row_sums = H_t.sum(axis=1, keepdims=True)

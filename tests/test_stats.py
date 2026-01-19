@@ -1,26 +1,25 @@
 """Tests for statistical analysis module."""
 
+import sys
+
 import numpy as np
 import pytest
-import sys
-sys.path.insert(0, 'src')
+
+sys.path.insert(0, "src")
 
 from graphs.knn import build_graph
 from graphs.laplacian import laplacian
+from stats.balance import balance_curve, balance_score, mellin_coupled_stat
+from stats.separability import effect_size_interpretation, separability_test
 from stats.spectra import (
-    spectral_gap, spectral_entropy, spectral_gap_additive,
-    spectral_entropy_additive, spectral_gap_multiplicative,
-    spectral_entropy_multiplicative
+    spectral_entropy,
+    spectral_entropy_additive,
+    spectral_entropy_multiplicative,
+    spectral_gap,
+    spectral_gap_additive,
+    spectral_gap_multiplicative,
 )
-from stats.stability import (
-    stability_score, noise_perturbation
-)
-from stats.separability import (
-    separability_test, effect_size_interpretation
-)
-from stats.balance import (
-    mellin_coupled_stat, balance_curve, balance_score
-)
+from stats.stability import noise_perturbation, stability_score
 
 
 class TestSpectralMeasures:
@@ -109,7 +108,7 @@ class TestStability:
         )
 
         assert stability > 0.9  # Should be highly stable
-        assert std_val < 0.1    # Low variance
+        assert std_val < 0.1  # Low variance
 
     def test_stability_with_noise(self):
         """Test stability under noise perturbations."""
@@ -186,8 +185,9 @@ class TestSeparability:
 
         for method in methods:
             try:
-                result = separability_test(phi_add, phi_mult, method=method,
-                                         trials=50, seed=0)
+                result = separability_test(
+                    phi_add, phi_mult, method=method, trials=50, seed=0
+                )
                 assert "p_value" in result
                 assert "separable" in result
                 assert result["method"] == method
@@ -258,8 +258,9 @@ class TestBalance:
             # Simplified statistic that should be symmetric about s=0.5
             return spectral_gap(L)
 
-        best_s, _, info = balance_score(X, symmetric_stat,
-                                       s_range=np.linspace(0.3, 0.7, 9), seed=0)
+        best_s, _, info = balance_score(
+            X, symmetric_stat, s_range=np.linspace(0.3, 0.7, 9), seed=0
+        )
 
         # Should be reasonably close to canonical balance point
         assert abs(best_s - 0.5) < 0.3  # Allow some tolerance
@@ -296,13 +297,22 @@ class TestIntegration:
         assert gap_mult > 0
 
         # Separability test
-        gaps_add = [spectral_gap_additive(X + 0.1*rng.normal(size=X.shape),
-                                         neighbors=4, seed=i) for i in range(3)]
-        gaps_mult = [spectral_gap_multiplicative(X + 0.1*rng.normal(size=X.shape),
-                                                neighbors=4, seed=i) for i in range(3)]
+        gaps_add = [
+            spectral_gap_additive(
+                X + 0.1 * rng.normal(size=X.shape), neighbors=4, seed=i
+            )
+            for i in range(3)
+        ]
+        gaps_mult = [
+            spectral_gap_multiplicative(
+                X + 0.1 * rng.normal(size=X.shape), neighbors=4, seed=i
+            )
+            for i in range(3)
+        ]
 
-        sep_result = separability_test(np.array(gaps_add), np.array(gaps_mult),
-                                     trials=50, seed=0)
+        sep_result = separability_test(
+            np.array(gaps_add), np.array(gaps_mult), trials=50, seed=0
+        )
 
         # Should complete without errors
         assert "separable" in sep_result
@@ -311,9 +321,9 @@ class TestIntegration:
         def gap_stat(L):
             return spectral_gap(L)
 
-        best_s, _, _ = balance_score(X, gap_stat,
-                                   s_range=np.linspace(0.4, 0.6, 5),
-                                   k=4, seed=0)
+        best_s, _, _ = balance_score(
+            X, gap_stat, s_range=np.linspace(0.4, 0.6, 5), k=4, seed=0
+        )
 
         assert 0.4 <= best_s <= 0.6
 
@@ -352,8 +362,9 @@ class TestIntegration:
             stats_mult.append(gap_mult)
 
         # Test separability
-        result = separability_test(np.array(stats_add), np.array(stats_mult),
-                                 trials=50, seed=0)
+        result = separability_test(
+            np.array(stats_add), np.array(stats_mult), trials=50, seed=0
+        )
 
         # Should detect mode difference for this geometric sequence
         assert "p_value" in result
@@ -365,9 +376,9 @@ class TestIntegration:
         def gap_stat(L):
             return spectral_gap(L)
 
-        s_values, stat_values = balance_curve(X, gap_stat,
-                                            s_range=np.array([0.0, 0.5, 1.0]),
-                                            k=2, seed=0)
+        s_values, stat_values = balance_curve(
+            X, gap_stat, s_range=np.array([0.0, 0.5, 1.0]), k=2, seed=0
+        )
 
         assert len(stat_values) == 3
         assert np.all(np.isfinite(stat_values))

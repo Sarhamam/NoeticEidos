@@ -1,18 +1,24 @@
 """Tests for algebraic operations."""
 
+import sys
+
 import numpy as np
 import pytest
-import sys
-sys.path.insert(0, 'src')
 
-from algebra.additive import gaussian_kernel, gaussian_affinity_matrix, heat_kernel
-from algebra.multiplicative import (
-    log_map, poisson_kernel_log, haar_measure_weight,
-    multiplicative_distance, log_ratio_distance
-)
+sys.path.insert(0, "src")
+
+from algebra.additive import gaussian_affinity_matrix, gaussian_kernel, heat_kernel
 from algebra.mellin import (
-    mellin_transform_discrete, mellin_unitarity_test,
-    mellin_balance_score
+    mellin_balance_score,
+    mellin_transform_discrete,
+    mellin_unitarity_test,
+)
+from algebra.multiplicative import (
+    haar_measure_weight,
+    log_map,
+    log_ratio_distance,
+    multiplicative_distance,
+    poisson_kernel_log,
 )
 
 
@@ -55,9 +61,7 @@ class TestAdditive:
 
     def test_gaussian_affinity_matrix(self):
         """Test Gaussian affinity matrix construction."""
-        X = np.array([[0.0, 0.0],
-                      [1.0, 0.0],
-                      [0.0, 1.0]])
+        X = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]])
         W = gaussian_affinity_matrix(X, sigma=1.0)
 
         assert W.shape == (3, 3)
@@ -72,9 +76,7 @@ class TestAdditive:
     def test_heat_kernel_diffusion(self):
         """Test heat kernel properties."""
         # Small Laplacian for testing
-        L = np.array([[2, -1, -1],
-                     [-1, 2, -1],
-                     [-1, -1, 2]])
+        L = np.array([[2, -1, -1], [-1, 2, -1], [-1, -1, 2]])
         t = 0.1
         H_t = heat_kernel(L, t, k=3)
 
@@ -183,18 +185,18 @@ class TestMellin:
     def test_mellin_unitarity_at_half(self):
         """Test unitarity property at s=1/2."""
         y_grid = np.linspace(0.5, 3.0, 30)
-        f_vals = np.exp(-y_grid**2)
+        f_vals = np.exp(-(y_grid**2))
         g_vals = np.sin(y_grid) / y_grid
 
         result = mellin_unitarity_test(f_vals, g_vals, y_grid, s=0.5)
 
-        assert 'inner_mellin' in result
-        assert 'inner_l2_haar' in result
-        assert result['s'] == 0.5
+        assert "inner_mellin" in result
+        assert "inner_l2_haar" in result
+        assert result["s"] == 0.5
 
         # Check that all values are finite
-        assert np.isfinite(result['inner_mellin'])
-        assert np.isfinite(result['inner_l2_haar'])
+        assert np.isfinite(result["inner_mellin"])
+        assert np.isfinite(result["inner_l2_haar"])
 
     def test_mellin_balance_score(self):
         """Test balance score between transport modes."""

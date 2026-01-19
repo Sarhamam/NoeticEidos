@@ -1,11 +1,11 @@
 """Fisher-Rao gradient flows for probabilistic models."""
 
-import numpy as np
-from scipy.special import softmax, logsumexp
-from typing import Callable, Tuple, List, Dict, Any, Optional
-import time
+from typing import Any, Callable, Dict, List, Tuple
 
-from geometry.fr_pullback import fisher_rao_metric, multinomial_fisher_info
+import numpy as np
+from scipy.special import logsumexp
+
+from geometry.fr_pullback import fisher_rao_metric
 
 
 def fr_gradient_flow(
@@ -15,7 +15,7 @@ def fr_gradient_flow(
     steps: int = 50,
     eta: float = 0.01,
     adaptive_step: bool = False,
-    verbose: bool = False
+    verbose: bool = False,
 ) -> Tuple[List[np.ndarray], Dict[str, Any]]:
     """Evolve embeddings via Fisher-Rao gradient flow.
 
@@ -90,7 +90,9 @@ def fr_gradient_flow(
             eta_trial = eta
             for _ in range(5):  # Max 5 backtracks
                 X_trial = X_current - eta_trial * fr_direction
-                logits_trial = update_logits_from_features(X_trial, logits_current, dlogits_dX)
+                logits_trial = update_logits_from_features(
+                    X_trial, logits_current, dlogits_dX
+                )
                 trial_F = F(logits_trial)
 
                 if trial_F < current_F:
@@ -114,14 +116,16 @@ def fr_gradient_flow(
         step_sizes.append(eta_effective)
 
         if verbose and iteration % 10 == 0:
-            print(f"FR flow iter {iteration:3d}: F={functional_values[-1]:.4f}, "
-                  f"step={eta_effective:.4f}")
+            print(
+                f"FR flow iter {iteration:3d}: F={functional_values[-1]:.4f}, "
+                f"step={eta_effective:.4f}"
+            )
 
     info = {
-        'functional_values': functional_values,
-        'step_sizes': step_sizes,
-        'converged': len(functional_values) > 1 and
-                    abs(functional_values[-1] - functional_values[-2]) < 1e-6
+        "functional_values": functional_values,
+        "step_sizes": step_sizes,
+        "converged": len(functional_values) > 1
+        and abs(functional_values[-1] - functional_values[-2]) < 1e-6,
     }
 
     return trajectory, info
@@ -132,7 +136,7 @@ def multinomial_nll_flow(
     dlogits_dX: np.ndarray,
     y_true: np.ndarray,
     steps: int = 50,
-    eta: float = 0.01
+    eta: float = 0.01,
 ) -> Tuple[List[np.ndarray], Dict[str, Any]]:
     """Fisher-Rao flow for multinomial negative log-likelihood.
 
@@ -169,8 +173,7 @@ def multinomial_nll_flow(
         log_probs = logits_ - logsumexp(logits_, axis=1, keepdims=True)
         return -np.sum(y_onehot * log_probs)
 
-    return fr_gradient_flow(logits, dlogits_dX, nll_functional,
-                           steps=steps, eta=eta)
+    return fr_gradient_flow(logits, dlogits_dX, nll_functional, steps=steps, eta=eta)
 
 
 def natural_gradient_descent(
@@ -179,7 +182,7 @@ def natural_gradient_descent(
     fisher_func: Callable,
     steps: int = 100,
     eta: float = 0.01,
-    verbose: bool = False
+    verbose: bool = False,
 ) -> Tuple[List[np.ndarray], Dict[str, Any]]:
     """Natural gradient descent using Fisher information.
 
@@ -217,7 +220,9 @@ def natural_gradient_descent(
 
         # Natural gradient: F^{-1} grad
         try:
-            nat_grad = np.linalg.solve(F_info + 1e-6 * np.eye(len(params_current)), grad)
+            nat_grad = np.linalg.solve(
+                F_info + 1e-6 * np.eye(len(params_current)), grad
+            )
         except np.linalg.LinAlgError:
             nat_grad = np.linalg.pinv(F_info) @ grad
 
@@ -231,8 +236,8 @@ def natural_gradient_descent(
             print(f"Natural GD iter {iteration:3d}: |grad|={gradients[-1]:.4f}")
 
     info = {
-        'gradient_norms': gradients,
-        'converged': len(gradients) > 1 and gradients[-1] < 1e-6
+        "gradient_norms": gradients,
+        "converged": len(gradients) > 1 and gradients[-1] < 1e-6,
     }
 
     return trajectory, info
@@ -243,7 +248,7 @@ def exponential_family_flow(
     sufficient_stats: np.ndarray,
     observations: np.ndarray,
     steps: int = 50,
-    eta: float = 0.01
+    eta: float = 0.01,
 ) -> Tuple[List[np.ndarray], Dict[str, Any]]:
     """Natural gradient flow for exponential family models.
 
@@ -277,7 +282,7 @@ def exponential_family_flow(
 
     theta = natural_params.copy()
 
-    for iteration in range(steps):
+    for _iteration in range(steps):
         # Compute expected sufficient statistics (model prediction)
         expected_stats = compute_expected_sufficient_stats(theta, sufficient_stats)
 
@@ -305,15 +310,16 @@ def exponential_family_flow(
         log_likelihoods.append(ll)
 
     info = {
-        'log_likelihoods': log_likelihoods,
-        'converged': len(log_likelihoods) > 1 and
-                    abs(log_likelihoods[-1] - log_likelihoods[-2]) < 1e-6
+        "log_likelihoods": log_likelihoods,
+        "converged": len(log_likelihoods) > 1
+        and abs(log_likelihoods[-1] - log_likelihoods[-2]) < 1e-6,
     }
 
     return trajectory, info
 
 
 # Helper functions
+
 
 def finite_diff_gradient(f: Callable, x: np.ndarray, eps: float = 1e-6) -> np.ndarray:
     """Compute gradient via finite differences."""
@@ -329,11 +335,12 @@ def finite_diff_gradient(f: Callable, x: np.ndarray, eps: float = 1e-6) -> np.nd
     return grad
 
 
-def update_logits_from_features(X: np.ndarray, logits_base: np.ndarray,
-                               dlogits_dX: np.ndarray) -> np.ndarray:
+def update_logits_from_features(
+    X: np.ndarray, logits_base: np.ndarray, dlogits_dX: np.ndarray
+) -> np.ndarray:
     """Update logits using linear approximation from feature changes."""
     n, k = logits_base.shape
-    d = X.shape[1]
+    X.shape[1]
 
     logits_new = logits_base.copy()
     for i in range(n):
@@ -344,24 +351,26 @@ def update_logits_from_features(X: np.ndarray, logits_base: np.ndarray,
     return logits_new
 
 
-def compute_expected_sufficient_stats(natural_params: np.ndarray,
-                                    sufficient_stats: np.ndarray) -> np.ndarray:
+def compute_expected_sufficient_stats(
+    natural_params: np.ndarray, sufficient_stats: np.ndarray
+) -> np.ndarray:
     """Compute expected sufficient statistics for exponential family."""
     # Placeholder implementation - depends on specific exponential family
     # For now, return empirical mean (should be replaced with proper expectation)
     return np.mean(sufficient_stats, axis=0)
 
 
-def compute_fisher_information_exp_family(natural_params: np.ndarray,
-                                        sufficient_stats: np.ndarray) -> np.ndarray:
+def compute_fisher_information_exp_family(
+    natural_params: np.ndarray, sufficient_stats: np.ndarray
+) -> np.ndarray:
     """Compute Fisher information for exponential family."""
     # Placeholder - should compute covariance of sufficient statistics
     return np.cov(sufficient_stats.T) + 1e-6 * np.eye(sufficient_stats.shape[1])
 
 
-def compute_log_likelihood_exp_family(natural_params: np.ndarray,
-                                     sufficient_stats: np.ndarray,
-                                     observations: np.ndarray) -> float:
+def compute_log_likelihood_exp_family(
+    natural_params: np.ndarray, sufficient_stats: np.ndarray, observations: np.ndarray
+) -> float:
     """Compute log-likelihood for exponential family."""
     # Placeholder implementation
     return np.sum(natural_params @ sufficient_stats.T)

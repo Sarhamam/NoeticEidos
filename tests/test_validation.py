@@ -1,30 +1,41 @@
 """Tests for the validation framework."""
 
+import sys
+
 import numpy as np
 import pytest
 from scipy.sparse import csr_matrix
-import sys
-sys.path.insert(0, 'src')
+
+sys.path.insert(0, "src")
 
 from validation.mathematical import (
-    check_graph_connectivity, validate_transversality,
-    ConnectivityError, TransversalityError
+    ConnectivityError,
+    TransversalityError,
+    check_graph_connectivity,
+    validate_transversality,
 )
 from validation.numerical import (
-    monitor_mass_conservation, validate_cg_convergence,
-    check_eigenvalue_validity, NumericalStabilityError
-)
-from validation.statistical import (
-    validate_bootstrap_size, check_separability_null,
-    apply_multiple_testing_correction, StatisticalValidityError
-)
-from validation.reproducibility import (
-    ensure_reproducibility, compute_data_hash,
-    verify_data_integrity, ReproducibilityError
+    NumericalStabilityError,
+    check_eigenvalue_validity,
+    monitor_mass_conservation,
+    validate_cg_convergence,
 )
 from validation.performance import (
-    check_memory_limits, detect_scaling_cliffs,
-    PerformanceError
+    PerformanceError,
+    check_memory_limits,
+    detect_scaling_cliffs,
+)
+from validation.reproducibility import (
+    ReproducibilityError,
+    compute_data_hash,
+    ensure_reproducibility,
+    verify_data_integrity,
+)
+from validation.statistical import (
+    StatisticalValidityError,
+    apply_multiple_testing_correction,
+    check_separability_null,
+    validate_bootstrap_size,
 )
 
 
@@ -34,12 +45,7 @@ class TestMathematicalValidation:
     def test_connectivity_check_connected_graph(self):
         """Test connectivity check on connected graph."""
         # Create connected path graph
-        A = np.array([
-            [0, 1, 0, 0],
-            [1, 0, 1, 0],
-            [0, 1, 0, 1],
-            [0, 0, 1, 0]
-        ])
+        A = np.array([[0, 1, 0, 0], [1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0]])
         A_sparse = csr_matrix(A)
 
         # Should pass without error
@@ -47,7 +53,9 @@ class TestMathematicalValidation:
         assert is_connected
 
         # With details
-        connected, n_comp, labels = check_graph_connectivity(A_sparse, return_components=True)
+        connected, n_comp, labels = check_graph_connectivity(
+            A_sparse, return_components=True
+        )
         assert connected
         assert n_comp == 1
         assert len(labels) == 4
@@ -55,12 +63,7 @@ class TestMathematicalValidation:
     def test_connectivity_check_disconnected_graph(self):
         """Test connectivity check on disconnected graph."""
         # Create disconnected graph (two components)
-        A = np.array([
-            [0, 1, 0, 0],
-            [1, 0, 0, 0],
-            [0, 0, 0, 1],
-            [0, 0, 1, 0]
-        ])
+        A = np.array([[0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]])
         A_sparse = csr_matrix(A)
 
         # Should detect disconnection
@@ -74,10 +77,7 @@ class TestMathematicalValidation:
     def test_transversality_validation_success(self):
         """Test transversality validation on well-conditioned Jacobian."""
         # Create full-rank 2x4 Jacobian
-        J_f = np.array([
-            [1.0, 0.0, 0.5, 0.0],
-            [0.0, 1.0, 0.0, 0.5]
-        ])
+        J_f = np.array([[1.0, 0.0, 0.5, 0.0], [0.0, 1.0, 0.0, 0.5]])
 
         cert = validate_transversality(J_f, expected_rank=2)
 
@@ -88,10 +88,7 @@ class TestMathematicalValidation:
     def test_transversality_validation_failure(self):
         """Test transversality validation on rank-deficient Jacobian."""
         # Create rank-1 Jacobian (second row is multiple of first)
-        J_f = np.array([
-            [1.0, 2.0, 3.0],
-            [2.0, 4.0, 6.0]  # Rank deficient
-        ])
+        J_f = np.array([[1.0, 2.0, 3.0], [2.0, 4.0, 6.0]])  # Rank deficient
 
         with pytest.raises(TransversalityError):
             validate_transversality(J_f, expected_rank=2)
@@ -99,10 +96,7 @@ class TestMathematicalValidation:
     def test_transversality_ill_conditioned(self):
         """Test transversality validation on ill-conditioned Jacobian."""
         # Create ill-conditioned Jacobian
-        J_f = np.array([
-            [1.0, 0.0],
-            [0.0, 1e-8]  # Very small singular value
-        ])
+        J_f = np.array([[1.0, 0.0], [0.0, 1e-8]])  # Very small singular value
 
         with pytest.raises(TransversalityError):
             validate_transversality(J_f, expected_rank=2, condition_threshold=1e6)
@@ -142,10 +136,24 @@ class TestNumericalStability:
     def test_cg_convergence_stagnation(self):
         """Test CG convergence validation with stagnation."""
         # Simulated stagnation (residual barely decreases)
-        residuals = [1.0, 0.999, 0.9989, 0.9988, 0.9987, 0.9986, 0.9985, 0.9984, 0.9983, 0.9982, 0.9981]
+        residuals = [
+            1.0,
+            0.999,
+            0.9989,
+            0.9988,
+            0.9987,
+            0.9986,
+            0.9985,
+            0.9984,
+            0.9983,
+            0.9982,
+            0.9981,
+        ]
 
         with pytest.raises(NumericalStabilityError):
-            validate_cg_convergence(residuals, max_stagnation_ratio=0.999, min_progress_steps=5)
+            validate_cg_convergence(
+                residuals, max_stagnation_ratio=0.999, min_progress_steps=5
+            )
 
     def test_eigenvalue_validity_laplacian(self):
         """Test eigenvalue validation for Laplacian matrix."""
@@ -206,13 +214,16 @@ class TestStatisticalValidation:
         # Mock separability test function that should NOT detect difference
         def mock_test(s1, s2):
             from scipy import stats
+
             _, p_val = stats.ttest_ind(s1, s2)
             return {"p_value": p_val, "separable": p_val < 0.05}
 
         report = check_separability_null(sample1, sample2, mock_test, n_trials=10)
 
         assert report["valid_null_behavior"]
-        assert report["observed_type1_rate"] <= 0.1  # Should be low for identical samples
+        assert (
+            report["observed_type1_rate"] <= 0.1
+        )  # Should be low for identical samples
 
     def test_multiple_testing_correction_bonferroni(self):
         """Test Bonferroni multiple testing correction."""
@@ -237,7 +248,9 @@ class TestStatisticalValidation:
         """Test Benjamini-Hochberg FDR correction."""
         p_values = np.array([0.001, 0.01, 0.02, 0.03])
 
-        result = apply_multiple_testing_correction(p_values, method="benjamini_hochberg")
+        result = apply_multiple_testing_correction(
+            p_values, method="benjamini_hochberg"
+        )
 
         assert result["method"] == "benjamini_hochberg"
         # BH is less conservative than Bonferroni
@@ -295,10 +308,7 @@ class TestReproducibility:
 
     def test_data_hash_dict_input(self):
         """Test data hash computation with dictionary input."""
-        data_dict = {
-            "X": np.array([[1, 2], [3, 4]]),
-            "y": np.array([0, 1])
-        }
+        data_dict = {"X": np.array([[1, 2], [3, 4]]), "y": np.array([0, 1])}
 
         hash1 = compute_data_hash(data_dict)
         hash2 = compute_data_hash(data_dict)
@@ -330,6 +340,7 @@ class TestPerformanceMonitoring:
 
     def test_scaling_cliff_detection_no_cliff(self):
         """Test scaling cliff detection with smooth scaling."""
+
         def smooth_function(n):
             return 0.001 * n**2  # O(n²) scaling
 
@@ -341,6 +352,7 @@ class TestPerformanceMonitoring:
 
     def test_scaling_cliff_detection_with_cliff(self):
         """Test scaling cliff detection with sudden degradation."""
+
         def cliff_function(n):
             if n <= 50:
                 return 0.001 * n**2
@@ -364,10 +376,11 @@ class TestIntegrationValidation:
 
         # Build adjacency matrix
         from graphs.knn import build_graph
+
         A = build_graph(X, mode="additive", k=5, seed=42)
 
         # Test connectivity
-        is_connected = check_graph_connectivity(A, require_connected=False)
+        check_graph_connectivity(A, require_connected=False)
         # Should be connected for this size and k
 
         # Create test Jacobian
@@ -409,9 +422,7 @@ class TestIntegrationValidation:
         # Test precision warning
         from validation.numerical import validate_float64_precision
 
-        arrays = {
-            "test_array": np.array([1, 2, 3], dtype=np.float32)  # Low precision
-        }
+        arrays = {"test_array": np.array([1, 2, 3], dtype=np.float32)}  # Low precision
 
         with pytest.warns(UserWarning):
             report = validate_float64_precision(arrays)

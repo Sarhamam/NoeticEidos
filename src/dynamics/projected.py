@@ -1,8 +1,7 @@
 """Tangent space projection for constrained dynamics on manifolds."""
 
 import numpy as np
-from typing import Union
-from scipy.linalg import svd, pinv
+from scipy.linalg import svd
 
 
 def projected_velocity(v: np.ndarray, J_f: np.ndarray) -> np.ndarray:
@@ -33,7 +32,9 @@ def projected_velocity(v: np.ndarray, J_f: np.ndarray) -> np.ndarray:
     if J_f.shape[0] < 1:
         raise ValueError("Jacobian must have at least 1 row")
     if J_f.shape[0] > J_f.shape[1]:
-        raise ValueError("Jacobian cannot have more rows than columns (overconstrained)")
+        raise ValueError(
+            "Jacobian cannot have more rows than columns (overconstrained)"
+        )
 
     d = J_f.shape[1]
 
@@ -43,13 +44,17 @@ def projected_velocity(v: np.ndarray, J_f: np.ndarray) -> np.ndarray:
     expected_rank = J_f.shape[0]
 
     if rank < expected_rank:
-        raise ValueError(f"Jacobian is rank deficient (rank={rank}, expected {expected_rank}). "
-                        "Transversality condition violated.")
+        raise ValueError(
+            f"Jacobian is rank deficient (rank={rank}, expected {expected_rank}). "
+            "Transversality condition violated."
+        )
 
     # Ensure v is 1D vector
     v_flat = np.asarray(v).flatten()
     if len(v_flat) != d:
-        raise ValueError(f"Velocity vector has wrong shape: expected ({d},), got {v.shape}")
+        raise ValueError(
+            f"Velocity vector has wrong shape: expected ({d},), got {v.shape}"
+        )
 
     # Compute projection: P = I - J_f^T (J_f J_f^T)^{-1} J_f
     I = np.eye(d)
@@ -64,8 +69,9 @@ def projected_velocity(v: np.ndarray, J_f: np.ndarray) -> np.ndarray:
     return P @ v_flat
 
 
-def projected_gradient_step(x: np.ndarray, grad: np.ndarray, J_f: np.ndarray,
-                           step_size: float = 0.01) -> np.ndarray:
+def projected_gradient_step(
+    x: np.ndarray, grad: np.ndarray, J_f: np.ndarray, step_size: float = 0.01
+) -> np.ndarray:
     """Take projected gradient step constrained to manifold.
 
     Parameters
@@ -114,8 +120,9 @@ def check_tangency(v: np.ndarray, J_f: np.ndarray, tol: float = 1e-10) -> bool:
     return np.linalg.norm(constraint_violation) < tol
 
 
-def parallel_transport_approximation(v: np.ndarray, x0: np.ndarray, x1: np.ndarray,
-                                    J_f_func: callable) -> np.ndarray:
+def parallel_transport_approximation(
+    v: np.ndarray, x0: np.ndarray, x1: np.ndarray, J_f_func: callable
+) -> np.ndarray:
     """Approximate parallel transport of tangent vector.
 
     Parameters
@@ -143,8 +150,9 @@ def parallel_transport_approximation(v: np.ndarray, x0: np.ndarray, x1: np.ndarr
     return projected_velocity(v, J_f_1)
 
 
-def constraint_force(f_vals: np.ndarray, J_f: np.ndarray,
-                    stiffness: float = 1.0) -> np.ndarray:
+def constraint_force(
+    f_vals: np.ndarray, J_f: np.ndarray, stiffness: float = 1.0
+) -> np.ndarray:
     """Compute constraint force to restore points to manifold.
 
     Parameters
@@ -187,7 +195,7 @@ def tangent_space_basis(J_f: np.ndarray) -> np.ndarray:
     Tangent space T_x Z = ker(J_f) has dimension d-2.
     Uses SVD to find null space basis.
     """
-    d = J_f.shape[1]
+    J_f.shape[1]
 
     # SVD of J_f
     U, s, Vt = svd(J_f, full_matrices=True)

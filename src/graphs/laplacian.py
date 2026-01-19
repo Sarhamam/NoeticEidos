@@ -1,8 +1,7 @@
 """Laplacian matrix computation for graph analysis."""
 
 import numpy as np
-from scipy.sparse import diags, eye, csr_matrix
-from scipy.sparse.linalg import norm
+from scipy.sparse import csr_matrix, diags, eye
 
 
 def laplacian(A: csr_matrix, normalized: bool = True) -> csr_matrix:
@@ -38,21 +37,21 @@ def laplacian(A: csr_matrix, normalized: bool = True) -> csr_matrix:
 
     if normalized:
         # Handle zero degrees (disconnected nodes)
-        with np.errstate(divide='ignore', invalid='ignore'):
+        with np.errstate(divide="ignore", invalid="ignore"):
             # D^{-1/2}
             d_inv_sqrt = np.where(degrees > 0, 1.0 / np.sqrt(degrees), 0)
 
         # Create D^{-1/2} as diagonal matrix
-        D_inv_sqrt = diags(d_inv_sqrt, format='csr')
+        D_inv_sqrt = diags(d_inv_sqrt, format="csr")
 
         # Normalized Laplacian: L = I - D^{-1/2} A D^{-1/2}
-        L = eye(n, format='csr') - D_inv_sqrt @ A @ D_inv_sqrt
+        L = eye(n, format="csr") - D_inv_sqrt @ A @ D_inv_sqrt
 
         # For isolated nodes, the diagonal should be 1
         # This is already handled by the formula above
     else:
         # Unnormalized Laplacian: L = D - A
-        D = diags(degrees, format='csr')
+        D = diags(degrees, format="csr")
         L = D - A
 
     return L.tocsr()

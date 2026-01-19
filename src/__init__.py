@@ -19,16 +19,18 @@ __email__ = "sar.hamam@example.com"
 try:
     from graphs.knn import build_graph
     from graphs.laplacian import laplacian
-    from solvers.lanczos import topk_eigs
     from solvers.cg import cg_solve
-    from stats.spectra import spectral_gap, spectral_entropy
+    from solvers.lanczos import topk_eigs
+    from stats.spectra import spectral_entropy, spectral_gap
     from validation.reproducibility import ensure_reproducibility
 
     # Optional imports (may not be available in minimal setups)
     try:
-        from topology import create_topology, TopologyType
-        from geometry.submersion import build_submersion, check_transversal
         from mellin.balance import mellin_balance
+
+        from geometry.submersion import build_submersion, check_transversal
+        from topology import TopologyType, create_topology
+
         _FULL_FEATURES = True
     except ImportError:
         _FULL_FEATURES = False
@@ -36,43 +38,50 @@ try:
 except ImportError as e:
     # Handle cases where dependencies might not be installed
     import warnings
-    warnings.warn(f"Some modules could not be imported: {e}", ImportWarning)
+
+    warnings.warn(
+        f"Some modules could not be imported: {e}", ImportWarning, stacklevel=2
+    )
     _FULL_FEATURES = False
 
 # Package metadata
 __all__ = [
-    '__version__',
-    '__author__',
-    'build_graph',
-    'laplacian',
-    'topk_eigs',
-    'cg_solve',
-    'spectral_gap',
-    'spectral_entropy',
-    'ensure_reproducibility',
+    "__version__",
+    "__author__",
+    "build_graph",
+    "laplacian",
+    "topk_eigs",
+    "cg_solve",
+    "spectral_gap",
+    "spectral_entropy",
+    "ensure_reproducibility",
 ]
 
 # Add optional exports if available
 if _FULL_FEATURES:
-    __all__.extend([
-        'create_topology',
-        'TopologyType',
-        'build_submersion',
-        'check_transversal',
-        'mellin_balance',
-    ])
+    __all__.extend(
+        [
+            "create_topology",
+            "TopologyType",
+            "build_submersion",
+            "check_transversal",
+            "mellin_balance",
+        ]
+    )
+
 
 def get_version():
     """Return the package version."""
     return __version__
 
+
 def check_installation():
     """Check if the package is properly installed with all dependencies."""
     installation_status = {
-        'version': __version__,
-        'core_modules': True,  # If we got here, core modules loaded
-        'full_features': _FULL_FEATURES,
-        'missing_features': []
+        "version": __version__,
+        "core_modules": True,  # If we got here, core modules loaded
+        "full_features": _FULL_FEATURES,
+        "missing_features": [],
     }
 
     if not _FULL_FEATURES:
@@ -81,21 +90,22 @@ def check_installation():
         try:
             import topology
         except ImportError:
-            missing.append('topology')
+            missing.append("topology")
 
         try:
             import geometry.submersion
         except ImportError:
-            missing.append('geometry.submersion')
+            missing.append("geometry.submersion")
 
         try:
             import mellin.balance
         except ImportError:
-            missing.append('mellin.balance')
+            missing.append("mellin.balance")
 
-        installation_status['missing_features'] = missing
+        installation_status["missing_features"] = missing
 
     return installation_status
+
 
 def print_info():
     """Print package information and installation status."""
@@ -105,10 +115,12 @@ def print_info():
 
     status = check_installation()
     print("Installation Status:")
-    print(f"  Core modules: ✅ Available")
-    print(f"  Full features: {'✅ Available' if status['full_features'] else '⚠️  Partial'}")
+    print("  Core modules: ✅ Available")
+    print(
+        f"  Full features: {'✅ Available' if status['full_features'] else '⚠️  Partial'}"
+    )
 
-    if status['missing_features']:
+    if status["missing_features"]:
         print(f"  Missing: {', '.join(status['missing_features'])}")
 
     print()

@@ -1,10 +1,11 @@
 """Lanczos algorithm for eigenvalue computation."""
 
+import time
+from typing import Literal, Optional, Tuple
+
 import numpy as np
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import eigsh
-from typing import Tuple, Optional, Literal
-import time
 
 from .utils import LanczosInfo
 
@@ -15,7 +16,7 @@ def topk_eigs(
     which: Literal["SM", "LM", "SA", "LA"] = "SM",
     maxiter: int = 5000,
     tol: float = 1e-6,
-    seed: Optional[int] = 0
+    seed: Optional[int] = 0,
 ) -> Tuple[np.ndarray, np.ndarray, LanczosInfo]:
     """Compute top-k eigenvalues and eigenvectors using Lanczos.
 
@@ -76,7 +77,7 @@ def topk_eigs(
             tol=tol,
             maxiter=maxiter,
             v0=v0,
-            return_eigenvectors=True
+            return_eigenvectors=True,
         )
 
         # Sort by eigenvalue (ascending)
@@ -112,7 +113,7 @@ def topk_eigs(
         matvecs=k * 10,  # Rough estimate
         wall_time=time.time() - start_time,
         tol=tol,
-        maxiter=maxiter
+        maxiter=maxiter,
     )
 
     return evals, evecs, info

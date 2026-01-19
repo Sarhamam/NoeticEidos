@@ -1,11 +1,12 @@
 """Tests for graph construction and Laplacian computation."""
 
+import sys
+
 import numpy as np
-import pytest
 from scipy.sparse import issparse
 from scipy.sparse.linalg import eigsh
-import sys
-sys.path.insert(0, 'src')
+
+sys.path.insert(0, "src")
 
 from graphs.knn import build_graph
 from graphs.laplacian import laplacian
@@ -120,7 +121,7 @@ class TestLaplacian:
         L = laplacian(A, normalized=False)
 
         # Compute smallest eigenvalues
-        evals = eigsh(L, k=5, which='SM', return_eigenvectors=False)
+        evals = eigsh(L, k=5, which="SM", return_eigenvectors=False)
 
         # All eigenvalues should be non-negative (PSD)
         assert all(e >= -1e-10 for e in evals)  # Numerical tolerance
@@ -132,7 +133,7 @@ class TestLaplacian:
         L = laplacian(A, normalized=True)
 
         # Compute eigenvalues
-        evals = eigsh(L, k=5, which='SM', return_eigenvectors=False)
+        evals = eigsh(L, k=5, which="SM", return_eigenvectors=False)
 
         # Eigenvalues should be in [0, 2]
         assert all(-1e-10 <= e <= 2 + 1e-10 for e in evals)
@@ -189,8 +190,8 @@ class TestIntegration:
         L_mult = laplacian(A_mult, normalized=True)
 
         # Get eigenvalues
-        evals_add = eigsh(L_add, k=10, which='SM', return_eigenvectors=False)
-        evals_mult = eigsh(L_mult, k=10, which='SM', return_eigenvectors=False)
+        evals_add = eigsh(L_add, k=10, which="SM", return_eigenvectors=False)
+        evals_mult = eigsh(L_mult, k=10, which="SM", return_eigenvectors=False)
 
         # Sort eigenvalues
         evals_add = np.sort(evals_add)
@@ -218,12 +219,13 @@ class TestIntegration:
 
         # Compute spectrum
         k_eigs = min(20, X.shape[0] - 1)
-        evals, evecs = eigsh(L, k=k_eigs, which='SM')
+        evals, evecs = eigsh(L, k=k_eigs, which="SM")
 
         # Verify spectral properties
         assert len(evals) == k_eigs
         assert evecs.shape == (50, k_eigs)
-        assert all(0 <= e <= 2 for e in evals)
+        # Normalized Laplacian eigenvalues should be in [0, 2], allow small numerical tolerance
+        assert all(-1e-10 <= e <= 2 + 1e-10 for e in evals)
 
         # Check orthogonality of eigenvectors
         gram = evecs.T @ evecs

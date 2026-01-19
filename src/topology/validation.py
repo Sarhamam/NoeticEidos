@@ -5,21 +5,25 @@ are properly invariant under the deck map transformations of the Möbius
 band quotient topology.
 """
 
+from typing import Any, Callable, Dict, Optional, Tuple, Union
+
 import numpy as np
-import warnings
-from typing import Callable, Dict, Any, List, Optional, Tuple, Union
-from .coords import Strip, deck_map, seam_equivalent_points
+
+from .coords import Strip, deck_map
 
 
 class TopologicalValidationError(Exception):
     """Raised when topological invariance requirements are violated."""
+
     pass
 
 
-def seam_invariance(phi: Callable[[np.ndarray], Union[float, np.ndarray]],
-                   q: np.ndarray,
-                   strip: Strip,
-                   tolerance: float = 1e-8) -> bool:
+def seam_invariance(
+    phi: Callable[[np.ndarray], Union[float, np.ndarray]],
+    q: np.ndarray,
+    strip: Strip,
+    tolerance: float = 1e-8,
+) -> bool:
     """Check if function phi is invariant under deck map transformation.
 
     For a function to be well-defined on the Möbius band quotient,
@@ -56,7 +60,9 @@ def seam_invariance(phi: Callable[[np.ndarray], Union[float, np.ndarray]],
     try:
         value_orig = phi(q)
     except Exception as e:
-        raise TopologicalValidationError(f"Function evaluation failed at ({u:.3f}, {v:.3f}): {e}")
+        raise TopologicalValidationError(
+            f"Function evaluation failed at ({u:.3f}, {v:.3f}): {e}"
+        )
 
     # Evaluate function at deck-mapped point
     u_deck, v_deck = deck_map(u, v, strip)
@@ -65,7 +71,9 @@ def seam_invariance(phi: Callable[[np.ndarray], Union[float, np.ndarray]],
     try:
         value_deck = phi(q_deck)
     except Exception as e:
-        raise TopologicalValidationError(f"Function evaluation failed at deck point ({u_deck:.3f}, {v_deck:.3f}): {e}")
+        raise TopologicalValidationError(
+            f"Function evaluation failed at deck point ({u_deck:.3f}, {v_deck:.3f}): {e}"
+        )
 
     # Check invariance
     if np.isscalar(value_orig) and np.isscalar(value_deck):
@@ -74,16 +82,21 @@ def seam_invariance(phi: Callable[[np.ndarray], Union[float, np.ndarray]],
         value_orig = np.asarray(value_orig)
         value_deck = np.asarray(value_deck)
         if value_orig.shape != value_deck.shape:
-            raise TopologicalValidationError("Function returns different shapes at equivalent points")
+            raise TopologicalValidationError(
+                "Function returns different shapes at equivalent points"
+            )
         error = np.max(np.abs(value_deck - value_orig))
 
     return error <= tolerance
 
 
-def seam_invariance_grid(phi: Callable[[np.ndarray], Union[float, np.ndarray]],
-                        U: np.ndarray, V: np.ndarray,
-                        strip: Strip,
-                        tolerance: float = 1e-8) -> Dict[str, Any]:
+def seam_invariance_grid(
+    phi: Callable[[np.ndarray], Union[float, np.ndarray]],
+    U: np.ndarray,
+    V: np.ndarray,
+    strip: Strip,
+    tolerance: float = 1e-8,
+) -> Dict[str, Any]:
     """Check seam invariance across a grid of points.
 
     Parameters
@@ -130,7 +143,9 @@ def seam_invariance_grid(phi: Callable[[np.ndarray], Union[float, np.ndarray]],
                 if np.isscalar(value_orig):
                     error = abs(value_deck - value_orig)
                 else:
-                    error = np.max(np.abs(np.asarray(value_deck) - np.asarray(value_orig)))
+                    error = np.max(
+                        np.abs(np.asarray(value_deck) - np.asarray(value_orig))
+                    )
 
                 errors.append(error)
                 violations.append((u, v, error))
@@ -139,7 +154,7 @@ def seam_invariance_grid(phi: Callable[[np.ndarray], Union[float, np.ndarray]],
 
         except Exception as e:
             failed_evaluations.append((u, v, str(e)))
-            errors.append(float('inf'))
+            errors.append(float("inf"))
 
     errors = np.array(errors)
     finite_errors = errors[np.isfinite(errors)]
@@ -157,16 +172,18 @@ def seam_invariance_grid(phi: Callable[[np.ndarray], Union[float, np.ndarray]],
         "tolerance": tolerance,
         "invariant": len(violations) == 0 and len(failed_evaluations) == 0,
         "violation_details": violations[:10],  # First 10 violations
-        "failure_details": failed_evaluations[:5]  # First 5 failures
+        "failure_details": failed_evaluations[:5],  # First 5 failures
     }
 
     return report
 
 
-def validate_metric_invariance(g_fn: Callable[[np.ndarray], np.ndarray],
-                              strip: Strip,
-                              n_test: int = 50,
-                              tolerance: float = 1e-8) -> Dict[str, Any]:
+def validate_metric_invariance(
+    g_fn: Callable[[np.ndarray], np.ndarray],
+    strip: Strip,
+    n_test: int = 50,
+    tolerance: float = 1e-8,
+) -> Dict[str, Any]:
     """Validate that metric function satisfies topological invariance.
 
     Tests the stronger condition that g(T(q)) = g(q), not just seam-compatibility.
@@ -215,7 +232,7 @@ def validate_metric_invariance(g_fn: Callable[[np.ndarray], np.ndarray],
 
         except Exception as e:
             violations.append((u_test[i], v_test[i], f"Error: {e}"))
-            errors.append(float('inf'))
+            errors.append(float("inf"))
 
     errors = np.array(errors)
     finite_errors = errors[np.isfinite(errors)]
@@ -229,16 +246,18 @@ def validate_metric_invariance(g_fn: Callable[[np.ndarray], np.ndarray],
         "mean_error": float(np.mean(finite_errors)) if len(finite_errors) > 0 else 0.0,
         "tolerance": tolerance,
         "invariant": len(violations) == 0,
-        "violation_details": violations[:10]
+        "violation_details": violations[:10],
     }
 
     return report
 
 
-def validate_spectral_invariance(spectrum_fn: Callable[[np.ndarray], np.ndarray],
-                                 strip: Strip,
-                                 n_test: int = 20,
-                                 tolerance: float = 1e-6) -> Dict[str, Any]:
+def validate_spectral_invariance(
+    spectrum_fn: Callable[[np.ndarray], np.ndarray],
+    strip: Strip,
+    n_test: int = 20,
+    tolerance: float = 1e-6,
+) -> Dict[str, Any]:
     """Validate that spectral statistics are invariant under deck map.
 
     Parameters
@@ -257,6 +276,7 @@ def validate_spectral_invariance(spectrum_fn: Callable[[np.ndarray], np.ndarray]
     validation_report : dict
         Spectral invariance validation results
     """
+
     def spectral_invariance_test(q):
         """Helper function for testing spectral invariance."""
         return seam_invariance(spectrum_fn, q, strip, tolerance)
@@ -272,10 +292,12 @@ def validate_spectral_invariance(spectrum_fn: Callable[[np.ndarray], np.ndarray]
     return report
 
 
-def validate_operator_invariance(operator_fn: Callable[[np.ndarray], np.ndarray],
-                                strip: Strip,
-                                n_test: int = 30,
-                                tolerance: float = 1e-8) -> Dict[str, Any]:
+def validate_operator_invariance(
+    operator_fn: Callable[[np.ndarray], np.ndarray],
+    strip: Strip,
+    n_test: int = 30,
+    tolerance: float = 1e-8,
+) -> Dict[str, Any]:
     """Validate that operator satisfies proper transformation under deck map.
 
     For operators, the required transformation is A(T(q)) = dT A(q) dT^T,
@@ -328,7 +350,7 @@ def validate_operator_invariance(operator_fn: Callable[[np.ndarray], np.ndarray]
 
         except Exception as e:
             violations.append((u_test[i], v_test[i], f"Error: {e}"))
-            errors.append(float('inf'))
+            errors.append(float("inf"))
 
     errors = np.array(errors)
     finite_errors = errors[np.isfinite(errors)]
@@ -342,16 +364,18 @@ def validate_operator_invariance(operator_fn: Callable[[np.ndarray], np.ndarray]
         "mean_error": float(np.mean(finite_errors)) if len(finite_errors) > 0 else 0.0,
         "tolerance": tolerance,
         "seam_compatible": len(violations) == 0,
-        "violation_details": violations[:10]
+        "violation_details": violations[:10],
     }
 
     return report
 
 
-def validate_geodesic_invariance(geodesic_fn: Callable[[np.ndarray, np.ndarray, float], Tuple],
-                                strip: Strip,
-                                n_test: int = 10,
-                                tolerance: float = 1e-6) -> Dict[str, Any]:
+def validate_geodesic_invariance(
+    geodesic_fn: Callable[[np.ndarray, np.ndarray, float], Tuple],
+    strip: Strip,
+    n_test: int = 10,
+    tolerance: float = 1e-6,
+) -> Dict[str, Any]:
     """Validate that geodesic integration respects topological structure.
 
     Tests that geodesics starting from equivalent points (related by deck map)
@@ -401,7 +425,7 @@ def validate_geodesic_invariance(geodesic_fn: Callable[[np.ndarray, np.ndarray, 
 
             if not (info1["success"] and info2["success"]):
                 violations.append((i, "Integration failed"))
-                trajectory_errors.append(float('inf'))
+                trajectory_errors.append(float("inf"))
                 continue
 
             # Compare final points (should be equivalent under deck map)
@@ -421,7 +445,7 @@ def validate_geodesic_invariance(geodesic_fn: Callable[[np.ndarray, np.ndarray, 
 
         except Exception as e:
             violations.append((i, f"Error: {e}"))
-            trajectory_errors.append(float('inf'))
+            trajectory_errors.append(float("inf"))
 
     trajectory_errors = np.array(trajectory_errors)
     finite_errors = trajectory_errors[np.isfinite(trajectory_errors)]
@@ -431,22 +455,28 @@ def validate_geodesic_invariance(geodesic_fn: Callable[[np.ndarray, np.ndarray, 
         "n_test": n_test,
         "violations": len(violations),
         "violation_rate": len(violations) / n_test,
-        "max_trajectory_error": float(np.max(finite_errors)) if len(finite_errors) > 0 else 0.0,
-        "mean_trajectory_error": float(np.mean(finite_errors)) if len(finite_errors) > 0 else 0.0,
+        "max_trajectory_error": (
+            float(np.max(finite_errors)) if len(finite_errors) > 0 else 0.0
+        ),
+        "mean_trajectory_error": (
+            float(np.mean(finite_errors)) if len(finite_errors) > 0 else 0.0
+        ),
         "tolerance": tolerance,
         "geodesics_invariant": len(violations) == 0,
-        "violation_details": violations[:5]
+        "violation_details": violations[:5],
     }
 
     return report
 
 
-def comprehensive_topology_validation(g_fn: Callable[[np.ndarray], np.ndarray],
-                                     spectrum_fn: Optional[Callable] = None,
-                                     operator_fn: Optional[Callable] = None,
-                                     geodesic_fn: Optional[Callable] = None,
-                                     strip: Optional[Strip] = None,
-                                     tolerance: float = 1e-8) -> Dict[str, Any]:
+def comprehensive_topology_validation(
+    g_fn: Callable[[np.ndarray], np.ndarray],
+    spectrum_fn: Optional[Callable] = None,
+    operator_fn: Optional[Callable] = None,
+    geodesic_fn: Optional[Callable] = None,
+    strip: Optional[Strip] = None,
+    tolerance: float = 1e-8,
+) -> Dict[str, Any]:
     """Run comprehensive topological validation suite.
 
     Parameters
@@ -476,11 +506,12 @@ def comprehensive_topology_validation(g_fn: Callable[[np.ndarray], np.ndarray],
         "strip_config": {"w": strip.w, "period": strip.period},
         "tolerance": tolerance,
         "tests_run": [],
-        "all_passed": True
+        "all_passed": True,
     }
 
     # Always test metric compatibility
     from .metric import validate_metric_grid
+
     metric_report = validate_metric_grid(g_fn, strip, tolerance=tolerance)
     report["metric_seam_compatibility"] = metric_report
     report["tests_run"].append("metric_seam_compatibility")
@@ -489,21 +520,27 @@ def comprehensive_topology_validation(g_fn: Callable[[np.ndarray], np.ndarray],
 
     # Optional tests
     if spectrum_fn is not None:
-        spectral_report = validate_spectral_invariance(spectrum_fn, strip, tolerance=tolerance)
+        spectral_report = validate_spectral_invariance(
+            spectrum_fn, strip, tolerance=tolerance
+        )
         report["spectral_invariance"] = spectral_report
         report["tests_run"].append("spectral_invariance")
         if not spectral_report["invariant"]:
             report["all_passed"] = False
 
     if operator_fn is not None:
-        operator_report = validate_operator_invariance(operator_fn, strip, tolerance=tolerance)
+        operator_report = validate_operator_invariance(
+            operator_fn, strip, tolerance=tolerance
+        )
         report["operator_seam_compatibility"] = operator_report
         report["tests_run"].append("operator_seam_compatibility")
         if not operator_report["seam_compatible"]:
             report["all_passed"] = False
 
     if geodesic_fn is not None:
-        geodesic_report = validate_geodesic_invariance(geodesic_fn, strip, tolerance=tolerance)
+        geodesic_report = validate_geodesic_invariance(
+            geodesic_fn, strip, tolerance=tolerance
+        )
         report["geodesic_invariance"] = geodesic_report
         report["tests_run"].append("geodesic_invariance")
         if not geodesic_report["geodesics_invariant"]:

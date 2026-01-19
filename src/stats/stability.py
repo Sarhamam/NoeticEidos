@@ -1,12 +1,18 @@
 """Stability analysis for robustness testing under perturbations."""
 
-import numpy as np
-from typing import Callable, Tuple, Dict, Any, Optional, Union
 import warnings
+from typing import Callable, Dict, Optional, Tuple
+
+import numpy as np
 
 
-def stability_score(stat_fn: Callable, X: np.ndarray, perturb_fn: Callable,
-                   trials: int = 10, seed: Optional[int] = None) -> Tuple[float, float, float]:
+def stability_score(
+    stat_fn: Callable,
+    X: np.ndarray,
+    perturb_fn: Callable,
+    trials: int = 10,
+    seed: Optional[int] = None,
+) -> Tuple[float, float, float]:
     """Measure robustness of statistic under perturbations.
 
     Parameters
@@ -55,14 +61,16 @@ def stability_score(stat_fn: Callable, X: np.ndarray, perturb_fn: Callable,
             if np.isfinite(value):
                 values.append(float(value))
             else:
-                warnings.warn(f"Non-finite statistic value in trial {trial}")
+                warnings.warn(
+                    f"Non-finite statistic value in trial {trial}", stacklevel=2
+                )
 
         except Exception as e:
-            warnings.warn(f"Error in trial {trial}: {e}")
+            warnings.warn(f"Error in trial {trial}: {e}", stacklevel=2)
             continue
 
     if len(values) == 0:
-        warnings.warn("No valid trials - returning zero stability")
+        warnings.warn("No valid trials - returning zero stability", stacklevel=2)
         return 0.0, 0.0, 0.0
 
     values = np.array(values)
@@ -96,6 +104,7 @@ def noise_perturbation(noise_level: float = 0.1) -> Callable:
     perturb_fn : callable
         Function that adds Gaussian noise to data
     """
+
     def perturb_fn(X: np.ndarray, seed: Optional[int] = None) -> np.ndarray:
         rng = np.random.default_rng(seed)
 
@@ -123,6 +132,7 @@ def subsample_perturbation(subsample_ratio: float = 0.9) -> Callable:
     perturb_fn : callable
         Function that randomly subsamples data points
     """
+
     def perturb_fn(X: np.ndarray, seed: Optional[int] = None) -> np.ndarray:
         rng = np.random.default_rng(seed)
 
@@ -144,6 +154,7 @@ def bootstrap_perturbation() -> Callable:
     perturb_fn : callable
         Function that bootstrap resamples the data
     """
+
     def perturb_fn(X: np.ndarray, seed: Optional[int] = None) -> np.ndarray:
         rng = np.random.default_rng(seed)
 
@@ -167,6 +178,7 @@ def coordinate_perturbation(coord_noise: float = 0.1) -> Callable:
     perturb_fn : callable
         Function that perturbs each coordinate independently
     """
+
     def perturb_fn(X: np.ndarray, seed: Optional[int] = None) -> np.ndarray:
         rng = np.random.default_rng(seed)
 
@@ -178,9 +190,14 @@ def coordinate_perturbation(coord_noise: float = 0.1) -> Callable:
     return perturb_fn
 
 
-def stability_curve(stat_fn: Callable, X: np.ndarray, perturb_fn: Callable,
-                   noise_levels: np.ndarray, trials: int = 10,
-                   seed: Optional[int] = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def stability_curve(
+    stat_fn: Callable,
+    X: np.ndarray,
+    perturb_fn: Callable,
+    noise_levels: np.ndarray,
+    trials: int = 10,
+    seed: Optional[int] = None,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Compute stability as a function of perturbation strength.
 
     Parameters
@@ -218,8 +235,13 @@ def stability_curve(stat_fn: Callable, X: np.ndarray, perturb_fn: Callable,
             return perturb_fn(X_in, seed_in, noise_level)
 
         try:
-            _, _, stability = stability_score(stat_fn, X, scaled_perturb_fn,
-                                            trials=trials, seed=rng.integers(0, 2**31))
+            _, _, stability = stability_score(
+                stat_fn,
+                X,
+                scaled_perturb_fn,
+                trials=trials,
+                seed=rng.integers(0, 2**31),
+            )
             stabilities.append(stability)
 
             # Estimate standard error (crude approximation)
@@ -227,16 +249,20 @@ def stability_curve(stat_fn: Callable, X: np.ndarray, perturb_fn: Callable,
             std_errors.append(std_error)
 
         except Exception as e:
-            warnings.warn(f"Error at noise level {noise_level}: {e}")
+            warnings.warn(f"Error at noise level {noise_level}: {e}", stacklevel=2)
             stabilities.append(0.0)
             std_errors.append(0.0)
 
     return noise_levels, np.array(stabilities), np.array(std_errors)
 
 
-def multi_statistic_stability(stat_fns: Dict[str, Callable], X: np.ndarray,
-                             perturb_fn: Callable, trials: int = 10,
-                             seed: Optional[int] = None) -> Dict[str, Tuple[float, float, float]]:
+def multi_statistic_stability(
+    stat_fns: Dict[str, Callable],
+    X: np.ndarray,
+    perturb_fn: Callable,
+    trials: int = 10,
+    seed: Optional[int] = None,
+) -> Dict[str, Tuple[float, float, float]]:
     """Compute stability for multiple statistics simultaneously.
 
     Parameters
@@ -263,20 +289,28 @@ def multi_statistic_stability(stat_fns: Dict[str, Callable], X: np.ndarray,
     for name, stat_fn in stat_fns.items():
         try:
             mean_val, std_val, stability = stability_score(
-                stat_fn, X, perturb_fn, trials=trials,
-                seed=rng.integers(0, 2**31) if seed is not None else None
+                stat_fn,
+                X,
+                perturb_fn,
+                trials=trials,
+                seed=rng.integers(0, 2**31) if seed is not None else None,
             )
             results[name] = (mean_val, std_val, stability)
         except Exception as e:
-            warnings.warn(f"Error computing stability for {name}: {e}")
+            warnings.warn(f"Error computing stability for {name}: {e}", stacklevel=2)
             results[name] = (0.0, 0.0, 0.0)
 
     return results
 
 
-def relative_stability(stat_fn: Callable, X: np.ndarray, perturb_fn: Callable,
-                      baseline_X: Optional[np.ndarray] = None,
-                      trials: int = 10, seed: Optional[int] = None) -> float:
+def relative_stability(
+    stat_fn: Callable,
+    X: np.ndarray,
+    perturb_fn: Callable,
+    baseline_X: Optional[np.ndarray] = None,
+    trials: int = 10,
+    seed: Optional[int] = None,
+) -> float:
     """Compute stability relative to a baseline dataset.
 
     Parameters
@@ -303,17 +337,19 @@ def relative_stability(stat_fn: Callable, X: np.ndarray, perturb_fn: Callable,
         baseline_X = X
 
     # Compute stability for test dataset
-    _, _, stability_test = stability_score(stat_fn, X, perturb_fn,
-                                         trials=trials, seed=seed)
+    _, _, stability_test = stability_score(
+        stat_fn, X, perturb_fn, trials=trials, seed=seed
+    )
 
     # Compute stability for baseline
     rng = np.random.default_rng(seed)
     baseline_seed = rng.integers(0, 2**31) if seed is not None else None
-    _, _, stability_baseline = stability_score(stat_fn, baseline_X, perturb_fn,
-                                             trials=trials, seed=baseline_seed)
+    _, _, stability_baseline = stability_score(
+        stat_fn, baseline_X, perturb_fn, trials=trials, seed=baseline_seed
+    )
 
     # Return ratio (with protection against division by zero)
     if stability_baseline > 1e-12:
         return stability_test / stability_baseline
     else:
-        return 1.0 if stability_test < 1e-12 else float('inf')
+        return 1.0 if stability_test < 1e-12 else float("inf")

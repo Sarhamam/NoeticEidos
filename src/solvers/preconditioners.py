@@ -1,8 +1,9 @@
 """Preconditioners for iterative solvers."""
 
+from typing import Callable
+
 import numpy as np
-from scipy.sparse import diags, csr_matrix, issparse
-from typing import Union, Callable, Optional
+from scipy.sparse import csr_matrix
 
 
 def jacobi_preconditioner(A: csr_matrix, eps: float = 1e-10) -> Callable:
@@ -38,11 +39,7 @@ def identity_preconditioner() -> Callable:
     return lambda v: v
 
 
-def build_preconditioner(
-    A: csr_matrix,
-    method: str = "jacobi",
-    **kwargs
-) -> Callable:
+def build_preconditioner(A: csr_matrix, method: str = "jacobi", **kwargs) -> Callable:
     """Build a preconditioner for matrix A.
 
     Parameters
@@ -68,12 +65,14 @@ def build_preconditioner(
     Jacobi is always safe for SPD matrices.
     """
     if method == "jacobi":
-        return jacobi_preconditioner(A, eps=kwargs.get('eps', 1e-10))
+        return jacobi_preconditioner(A, eps=kwargs.get("eps", 1e-10))
     elif method == "none" or method is None:
         return identity_preconditioner()
     elif method == "ilu":
         # Placeholder for ILU implementation
-        raise NotImplementedError("ILU preconditioner not yet implemented. Use 'jacobi' for now.")
+        raise NotImplementedError(
+            "ILU preconditioner not yet implemented. Use 'jacobi' for now."
+        )
     else:
         raise ValueError(f"Unknown preconditioner method: {method}")
 
@@ -91,8 +90,7 @@ class DiagonalPreconditioner:
         eps : float
             Regularization parameter
         """
-        self.diag_inv = np.where(np.abs(diag_values) > eps,
-                                 1.0 / diag_values, 1.0)
+        self.diag_inv = np.where(np.abs(diag_values) > eps, 1.0 / diag_values, 1.0)
 
     def __call__(self, v: np.ndarray) -> np.ndarray:
         """Apply preconditioner M^{-1} to vector v."""

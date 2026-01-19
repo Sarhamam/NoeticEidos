@@ -5,9 +5,10 @@ quotient topology. The Möbius band is realized as [0,2π) × [-w,w] with
 seam identification T(u,v) = (u+π, -v) mod 2π.
 """
 
-import numpy as np
-from typing import Tuple, Optional
 from dataclasses import dataclass
+from typing import Tuple
+
+import numpy as np
 
 
 @dataclass
@@ -24,6 +25,7 @@ class Strip:
     period : float
         Period in u-direction (default 2π)
     """
+
     w: float
     period: float = 2 * np.pi
 
@@ -47,7 +49,9 @@ def wrap_u(u: np.ndarray, period: float = 2 * np.pi) -> np.ndarray:
     return np.mod(u, period)
 
 
-def deck_map(u: np.ndarray, v: np.ndarray, strip: Strip) -> Tuple[np.ndarray, np.ndarray]:
+def deck_map(
+    u: np.ndarray, v: np.ndarray, strip: Strip
+) -> Tuple[np.ndarray, np.ndarray]:
     """Apply deck map T(u,v) = (u+π, -v) for Möbius band seam identification.
 
     The deck map implements the fundamental identification that creates
@@ -79,7 +83,9 @@ def deck_map(u: np.ndarray, v: np.ndarray, strip: Strip) -> Tuple[np.ndarray, np
     return u_mapped, v_mapped
 
 
-def pushforward_velocity(du: np.ndarray, dv: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def pushforward_velocity(
+    du: np.ndarray, dv: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray]:
     """Push forward velocities under deck map differential dT = diag(1, -1).
 
     Parameters
@@ -108,10 +114,9 @@ def pushforward_velocity(du: np.ndarray, dv: np.ndarray) -> Tuple[np.ndarray, np
     return du_pushed, dv_pushed
 
 
-def apply_seam_if_needed(u: np.ndarray, v: np.ndarray,
-                        du: np.ndarray, dv: np.ndarray,
-                        strip: Strip) -> Tuple[np.ndarray, np.ndarray,
-                                             np.ndarray, np.ndarray]:
+def apply_seam_if_needed(
+    u: np.ndarray, v: np.ndarray, du: np.ndarray, dv: np.ndarray, strip: Strip
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Apply seam identification when crossing strip boundaries.
 
     When a point reaches v = ±w, apply the deck map to transition
@@ -178,8 +183,9 @@ def apply_seam_if_needed(u: np.ndarray, v: np.ndarray,
     return u_new, v_new, du_new, dv_new
 
 
-def is_on_seam(u: np.ndarray, v: np.ndarray, strip: Strip,
-               tolerance: float = 1e-12) -> np.ndarray:
+def is_on_seam(
+    u: np.ndarray, v: np.ndarray, strip: Strip, tolerance: float = 1e-12
+) -> np.ndarray:
     """Check if points are on the seam boundaries.
 
     Parameters
@@ -200,8 +206,9 @@ def is_on_seam(u: np.ndarray, v: np.ndarray, strip: Strip,
     return (np.abs(v - strip.w) < tolerance) | (np.abs(v + strip.w) < tolerance)
 
 
-def seam_equivalent_points(u: np.ndarray, v: np.ndarray,
-                          strip: Strip) -> Tuple[np.ndarray, np.ndarray]:
+def seam_equivalent_points(
+    u: np.ndarray, v: np.ndarray, strip: Strip
+) -> Tuple[np.ndarray, np.ndarray]:
     """Get seam-equivalent points under deck map.
 
     For points on the seam, returns the equivalent point on the
@@ -233,9 +240,9 @@ def seam_equivalent_points(u: np.ndarray, v: np.ndarray,
     return u_equiv, v_equiv
 
 
-def distance_on_quotient(u1: np.ndarray, v1: np.ndarray,
-                        u2: np.ndarray, v2: np.ndarray,
-                        strip: Strip) -> np.ndarray:
+def distance_on_quotient(
+    u1: np.ndarray, v1: np.ndarray, u2: np.ndarray, v2: np.ndarray, strip: Strip
+) -> np.ndarray:
     """Compute distance between points accounting for quotient topology.
 
     Parameters

@@ -1,15 +1,17 @@
 """Tests for iterative solvers."""
 
+import sys
+
 import numpy as np
 import pytest
-from scipy.sparse import diags, csr_matrix, eye
-import sys
-sys.path.insert(0, 'src')
+from scipy.sparse import csr_matrix, diags, eye
+
+sys.path.insert(0, "src")
 
 from graphs.knn import build_graph
 from graphs.laplacian import laplacian
 from solvers.cg import cg_solve, effective_resistance
-from solvers.lanczos import topk_eigs, spectral_gap, fiedler_vector
+from solvers.lanczos import fiedler_vector, spectral_gap, topk_eigs
 from solvers.preconditioners import build_preconditioner, jacobi_preconditioner
 
 
@@ -37,7 +39,7 @@ class TestCG:
         assert info.iterations < 100  # Should converge quickly
 
         # Check residual manually
-        A = L + alpha * eye(n, format='csr')
+        A = L + alpha * eye(n, format="csr")
         r = A.dot(u) - b
         rel_residual = np.linalg.norm(r) / np.linalg.norm(b)
         assert rel_residual <= 1e-6
@@ -76,7 +78,7 @@ class TestCG:
         assert info.converged
 
         # Check each solution
-        A = L + 1e-2 * eye(n, format='csr')
+        A = L + 1e-2 * eye(n, format="csr")
         for j in range(k):
             r = A.dot(U[:, j]) - B[:, j]
             assert np.linalg.norm(r) / np.linalg.norm(B[:, j]) <= 1e-5
@@ -194,7 +196,7 @@ class TestPreconditioners:
         """Test Jacobi preconditioner extracts correct diagonal."""
         # Create a matrix with known diagonal
         diag_vals = np.array([2.0, 3.0, 1.0, 4.0])
-        A = diags(diag_vals, format='csr')
+        A = diags(diag_vals, format="csr")
 
         M = jacobi_preconditioner(A)
         v = np.ones(4)
@@ -207,11 +209,7 @@ class TestPreconditioners:
     def test_jacobi_zero_diagonal_handling(self):
         """Test Jacobi handles zero diagonal entries."""
         # Matrix with zero diagonal entry
-        A = csr_matrix(np.array([
-            [0, 1, 0],
-            [1, 2, 1],
-            [0, 1, 3]
-        ]))
+        A = csr_matrix(np.array([[0, 1, 0], [1, 2, 1], [0, 1, 3]]))
 
         M = jacobi_preconditioner(A, eps=1e-10)
         v = np.ones(3)

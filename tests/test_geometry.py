@@ -1,19 +1,27 @@
 """Tests for geometric operations."""
 
+import sys
+
 import numpy as np
 import pytest
-import sys
-sys.path.insert(0, 'src')
 
-from geometry.submersion import build_submersion, check_transversal, find_zero_set
-from geometry.projection import (
-    project_to_tangent, project_vector, tangent_basis,
-    check_projection_properties, project_to_manifold
-)
+sys.path.insert(0, "src")
+
 from geometry.fr_pullback import (
-    fisher_rao_metric, multinomial_fisher_info, rescale_by_metric,
-    fisher_rao_divergence, riemannian_distance
+    fisher_rao_divergence,
+    fisher_rao_metric,
+    multinomial_fisher_info,
+    rescale_by_metric,
+    riemannian_distance,
 )
+from geometry.projection import (
+    check_projection_properties,
+    project_to_manifold,
+    project_to_tangent,
+    project_vector,
+    tangent_basis,
+)
+from geometry.submersion import build_submersion, check_transversal
 
 
 class TestSubmersion:
@@ -99,10 +107,10 @@ class TestProjection:
         P = project_to_tangent(J_f)
 
         props = check_projection_properties(P)
-        assert props['is_symmetric']
-        assert props['is_idempotent']
-        assert props['binary_eigenvalues']
-        assert props['rank'] == 3  # d - 2 for d=5
+        assert props["is_symmetric"]
+        assert props["is_idempotent"]
+        assert props["binary_eigenvalues"]
+        assert props["rank"] == 3  # d - 2 for d=5
 
     def test_projection_methods_agree(self):
         """Test that different projection methods give same result."""
@@ -111,7 +119,8 @@ class TestProjection:
 
         # Make sure rank is 2
         U, s, Vt = np.linalg.svd(J_f, full_matrices=False)
-        s[0] = 1.0; s[1] = 1.0  # Set to have exactly rank 2
+        s[0] = 1.0
+        s[1] = 1.0  # Set to have exactly rank 2
         J_f = U @ np.diag(s) @ Vt
 
         P_svd = project_to_tangent(J_f, method="svd")
@@ -170,10 +179,7 @@ class TestFisherRao:
     def test_multinomial_fisher_info(self):
         """Test Fisher information for multinomial distributions."""
         # Simple probability distributions
-        probs = np.array([
-            [0.5, 0.3, 0.2],
-            [0.8, 0.1, 0.1]
-        ])
+        probs = np.array([[0.5, 0.3, 0.2], [0.8, 0.1, 0.1]])
 
         I = multinomial_fisher_info(probs)
         assert I.shape == (2, 3, 3)
@@ -186,16 +192,15 @@ class TestFisherRao:
     def test_fisher_rao_metric_basic(self):
         """Test Fisher-Rao metric computation."""
         # Simple logits
-        logits = np.array([
-            [1.0, 0.5, -0.5],
-            [0.0, 1.0, 0.0]
-        ])
+        logits = np.array([[1.0, 0.5, -0.5], [0.0, 1.0, 0.0]])
 
         # Mock Jacobian (logits w.r.t features)
-        dlogits_dX = np.array([
-            [[1, 0], [0, 1], [1, 1]],  # 3 classes, 2 features
-            [[0, 1], [1, 0], [0, 0]]
-        ])
+        dlogits_dX = np.array(
+            [
+                [[1, 0], [0, 1], [1, 1]],  # 3 classes, 2 features
+                [[0, 1], [1, 0], [0, 0]],
+            ]
+        )
 
         G = fisher_rao_metric(logits, dlogits_dX)
         assert G.shape == (2, 2, 2)

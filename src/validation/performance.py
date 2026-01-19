@@ -1,22 +1,26 @@
 """Performance monitoring and scaling cliff detection."""
 
-import psutil
 import time
-import numpy as np
-from typing import Dict, Any, Optional, Callable, Tuple
 import warnings
 from functools import wraps
+from typing import Any, Callable, Dict, Tuple
+
+import numpy as np
+import psutil
 
 
 class PerformanceError(Exception):
     """Raised when performance limits are exceeded."""
+
     pass
 
 
-def check_memory_limits(matrix_size: Tuple[int, int],
-                      dtype: np.dtype = np.float64,
-                      max_memory_gb: float = 32.0,
-                      safety_factor: float = 0.8) -> Dict[str, Any]:
+def check_memory_limits(
+    matrix_size: Tuple[int, int],
+    dtype: np.dtype = np.float64,
+    max_memory_gb: float = 32.0,
+    safety_factor: float = 0.8,
+) -> Dict[str, Any]:
     """Check if matrix operations will exceed memory limits.
 
     Parameters
@@ -69,19 +73,21 @@ def check_memory_limits(matrix_size: Tuple[int, int],
         "total_memory_gb": float(total_gb),
         "max_allowed_gb": max_memory_gb,
         "safety_factor": safety_factor,
-        "recommendations": []
+        "recommendations": [],
     }
 
     if exceeds_limit or exceeds_system:
         recommendations = []
 
         if matrix_memory_gb > 1.0:  # Only for large matrices
-            recommendations.extend([
-                "Use sparse matrix representations if possible",
-                "Consider iterative methods instead of direct factorization",
-                "Process data in chunks/batches",
-                "Use lower precision (float32) if acceptable"
-            ])
+            recommendations.extend(
+                [
+                    "Use sparse matrix representations if possible",
+                    "Consider iterative methods instead of direct factorization",
+                    "Process data in chunks/batches",
+                    "Use lower precision (float32) if acceptable",
+                ]
+            )
 
         if exceeds_system:
             recommendations.append(
@@ -100,10 +106,12 @@ def check_memory_limits(matrix_size: Tuple[int, int],
     return report
 
 
-def monitor_runtime_complexity(func: Callable,
-                              input_sizes: list,
-                              max_time_seconds: float = 300.0,
-                              expected_complexity: str = "O(n²)") -> Dict[str, Any]:
+def monitor_runtime_complexity(
+    func: Callable,
+    input_sizes: list,
+    max_time_seconds: float = 300.0,
+    expected_complexity: str = "O(n²)",
+) -> Dict[str, Any]:
     """Monitor runtime complexity and detect scaling issues.
 
     Parameters
@@ -140,7 +148,7 @@ def monitor_runtime_complexity(func: Callable,
 
         start_time = time.time()
         try:
-            result = func(size)
+            func(size)
             end_time = time.time()
         except Exception as e:
             raise PerformanceError(f"Function failed at size {size}: {e}")
@@ -172,7 +180,7 @@ def monitor_runtime_complexity(func: Callable,
 
     # Extrapolate to larger sizes
     next_size = input_sizes[-1] * 2
-    predicted_time = runtimes[-1] * (2 ** exponent)
+    predicted_time = runtimes[-1] * (2**exponent)
 
     # Classify complexity
     if exponent < 1.2:
@@ -195,28 +203,30 @@ def monitor_runtime_complexity(func: Callable,
         "expected_complexity": expected_complexity,
         "predicted_next_runtime": float(predicted_time),
         "next_size": next_size,
-        "concerning_scaling": exponent > 3.0 or predicted_time > max_time_seconds
+        "concerning_scaling": exponent > 3.0 or predicted_time > max_time_seconds,
     }
 
     # Warnings for concerning behavior
     if exponent > 3.0:
         warnings.warn(
             f"Concerning scaling detected: exponent {exponent:.2f} suggests {complexity_class}. "
-            f"Algorithm may not scale to large inputs."
+            f"Algorithm may not scale to large inputs.",
+            stacklevel=2,
         )
 
     if predicted_time > max_time_seconds:
         warnings.warn(
             f"Predicted runtime at size {next_size} is {predicted_time:.1f}s, "
-            f"exceeding {max_time_seconds:.1f}s limit."
+            f"exceeding {max_time_seconds:.1f}s limit.",
+            stacklevel=2,
         )
 
     return report
 
 
-def detect_scaling_cliffs(n_values: list,
-                        complexity_test_func: Callable,
-                        cliff_threshold: float = 10.0) -> Dict[str, Any]:
+def detect_scaling_cliffs(
+    n_values: list, complexity_test_func: Callable, cliff_threshold: float = 10.0
+) -> Dict[str, Any]:
     """Detect sudden scaling degradation (cliffs) in algorithm performance.
 
     Parameters
@@ -256,22 +266,26 @@ def detect_scaling_cliffs(n_values: list,
     runtime_ratios = []
 
     for i in range(1, len(runtimes)):
-        if runtimes[i-1] > 0:
-            ratio = runtimes[i] / runtimes[i-1]
+        if runtimes[i - 1] > 0:
+            ratio = runtimes[i] / runtimes[i - 1]
             runtime_ratios.append(ratio)
 
             # Size ratio for normalization
-            size_ratio = n_values[i] / n_values[i-1]
-            normalized_ratio = ratio / (size_ratio ** 2)  # Normalize by O(n²) expectation
+            size_ratio = n_values[i] / n_values[i - 1]
+            normalized_ratio = ratio / (size_ratio**2)  # Normalize by O(n²) expectation
 
             if normalized_ratio > cliff_threshold:
-                cliffs_detected.append({
-                    "size_from": n_values[i-1],
-                    "size_to": n_values[i],
-                    "runtime_ratio": float(ratio),
-                    "normalized_ratio": float(normalized_ratio),
-                    "likely_cause": _diagnose_cliff_cause(n_values[i], normalized_ratio)
-                })
+                cliffs_detected.append(
+                    {
+                        "size_from": n_values[i - 1],
+                        "size_to": n_values[i],
+                        "runtime_ratio": float(ratio),
+                        "normalized_ratio": float(normalized_ratio),
+                        "likely_cause": _diagnose_cliff_cause(
+                            n_values[i], normalized_ratio
+                        ),
+                    }
+                )
 
     report = {
         "cliffs_detected": cliffs_detected,
@@ -279,14 +293,16 @@ def detect_scaling_cliffs(n_values: list,
         "runtimes": runtimes,
         "runtime_ratios": runtime_ratios,
         "cliff_count": len(cliffs_detected),
-        "cliff_threshold": cliff_threshold
+        "cliff_threshold": cliff_threshold,
     }
 
     if cliffs_detected:
-        cliff_summary = "; ".join([
-            f"size {c['size_to']}: {c['runtime_ratio']:.1f}x slower"
-            for c in cliffs_detected
-        ])
+        cliff_summary = "; ".join(
+            [
+                f"size {c['size_to']}: {c['runtime_ratio']:.1f}x slower"
+                for c in cliffs_detected
+            ]
+        )
 
         raise PerformanceError(
             f"Scaling cliffs detected: {cliff_summary}. "
@@ -296,9 +312,9 @@ def detect_scaling_cliffs(n_values: list,
     return report
 
 
-def monitor_operation_performance(operation_name: str,
-                                max_time: float = 60.0,
-                                max_memory_mb: float = 1024.0):
+def monitor_operation_performance(
+    operation_name: str, max_time: float = 60.0, max_memory_mb: float = 1024.0
+):
     """Decorator to monitor performance of critical operations.
 
     Parameters
@@ -315,6 +331,7 @@ def monitor_operation_performance(operation_name: str,
     decorator : callable
         Performance monitoring decorator
     """
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -349,18 +366,20 @@ def monitor_operation_performance(operation_name: str,
             if mem_increase > max_memory_mb:
                 warnings.warn(
                     f"Operation '{operation_name}' used {mem_increase:.1f}MB memory "
-                    f"(limit: {max_memory_mb:.1f}MB)"
+                    f"(limit: {max_memory_mb:.1f}MB)",
+                    stacklevel=2,
                 )
 
             return result
 
         return wrapper
+
     return decorator
 
 
-def estimate_graph_memory_usage(n_nodes: int,
-                               k_neighbors: int,
-                               dtype: np.dtype = np.float64) -> Dict[str, Any]:
+def estimate_graph_memory_usage(
+    n_nodes: int, k_neighbors: int, dtype: np.dtype = np.float64
+) -> Dict[str, Any]:
     """Estimate memory usage for k-NN graph construction.
 
     Parameters
@@ -404,8 +423,11 @@ def estimate_graph_memory_usage(n_nodes: int,
         "sparse_memory_mb": float(sparse_total_mb),
         "dense_memory_mb": float(dense_mb),
         "temp_memory_mb": float(temp_mb),
-        "memory_savings_ratio": float(dense_mb / sparse_total_mb) if sparse_total_mb > 0 else float('inf'),
-        "recommended_sparse": sparse_total_mb < dense_mb / 10  # Use sparse if 10x smaller
+        "memory_savings_ratio": (
+            float(dense_mb / sparse_total_mb) if sparse_total_mb > 0 else float("inf")
+        ),
+        "recommended_sparse": sparse_total_mb
+        < dense_mb / 10,  # Use sparse if 10x smaller
     }
 
 
