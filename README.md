@@ -113,28 +113,39 @@ mypy . --ignore-missing-imports
 
 ### 📈 Framework Diagram
 
-```mermaid
-flowchart TD
-    A[Additive Transport\n(Gaussian / Heat)] --> B[Mellin Balance\ns = 1/2]
-    C[Multiplicative Transport\n(Poisson / Log / Haar)] --> B
-
-    B --> D[Submersion Backbone\nf = (τ,σ): M → ℝ²\nZero set Z = f⁻¹(0)\nTransversality check]
-    D --> E[Fisher–Rao Pullback\nModel-aware metrics]
-    E --> F[Sparse Numerics\nk-NN Graphs, CG, Lanczos\nSpectra & Curvature]
-
-    class A add
-    class C mult
-    class B mellin
-    class D submersion
-    class E fr
-    class F sparse
-
-    classDef add fill=#a2d2ff,stroke=#023e8a,stroke-width=2px;
-    classDef mult fill=#ffb703,stroke=#9a3412,stroke-width=2px;
-    classDef mellin fill=#caffbf,stroke=#2d6a4f,stroke-width=2px;
-    classDef submersion fill=#ffd6a5,stroke=#9a6324,stroke-width=2px;
-    classDef fr fill=#e9c46a,stroke=#7a4900,stroke-width=2px;
-    classDef sparse fill=#bdb2ff,stroke=#3c096c,stroke-width=2px;
+```
+┌─────────────────────────┐     ┌─────────────────────────┐
+│    Additive Transport   │     │  Multiplicative Transport│
+│    (Gaussian / Heat)    │     │  (Poisson / Log / Haar) │
+└───────────┬─────────────┘     └───────────┬─────────────┘
+            │                               │
+            └───────────┬───────────────────┘
+                        ▼
+            ┌───────────────────────┐
+            │     Mellin Balance    │
+            │        s = 1/2        │
+            └───────────┬───────────┘
+                        │
+                        ▼
+            ┌───────────────────────┐
+            │  Submersion Backbone  │
+            │   f = (τ,σ): M → ℝ²   │
+            │  Zero set Z = f⁻¹(0)  │
+            │  Transversality check │
+            └───────────┬───────────┘
+                        │
+                        ▼
+            ┌───────────────────────┐
+            │  Fisher–Rao Pullback  │
+            │  Model-aware metrics  │
+            └───────────┬───────────┘
+                        │
+                        ▼
+            ┌───────────────────────┐
+            │    Sparse Numerics    │
+            │ k-NN Graphs, CG/Lanczos│
+            │   Spectra & Curvature │
+            └───────────────────────┘
 ```
 
 ---
