@@ -34,12 +34,12 @@ This library implements a research program proposed by Sar Hamam:
 ## 📦 Installation
 
 ```bash
-git clone https://github.com/<your-org>/<repo-name>.git
-cd <repo-name>
+git clone https://github.com/Sarhamam/NoeticEidos.git
+cd NoeticEidos
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-pip install -r requirements-dev.txt
-````
+pip install -e .  # Install package in development mode
+```
 
 ---
 
@@ -135,6 +135,7 @@ flowchart TD
     classDef submersion fill=#ffd6a5,stroke=#9a6324,stroke-width=2px;
     classDef fr fill=#e9c46a,stroke=#7a4900,stroke-width=2px;
     classDef sparse fill=#bdb2ff,stroke=#3c096c,stroke-width=2px;
+```
 
 ---
 
@@ -143,11 +144,23 @@ flowchart TD
 This framework is based on the original theoretical and computational work of **Sar Hamam**.
 Please retain attribution in derivative works, documentation, and research papers.
 
+### Citation
+
+If you use this framework in your research, please cite:
+
+```bibtex
+@software{hamam2025noetic,
+  author       = {Hamam, Sar},
+  title        = {Noetic Geometry Framework: Unifying Dual Transports and Topological Analysis},
+  year         = {2025},
+  url          = {https://github.com/Sarhamam/NoeticEidos},
+  note         = {A geometric data oriented library unifying additive and multiplicative transports, Mellin coupling, submersion geometry, and Fisher-Rao pullbacks}
+}
+```
+
 ---
 
 ## 📜 License
 
 MIT License — see [LICENSE](LICENSE) for details.
-
-```
 
